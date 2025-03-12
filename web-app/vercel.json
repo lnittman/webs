@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "cd ../packages/shared && pnpm build && cd ../web-app && pnpm build",
+  "buildCommand": "pnpm build",
   "outputDirectory": "build",
   "routes": [
     {

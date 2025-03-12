@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "cd packages/shared && pnpm build && cd ../.. && pnpm build",
+  "buildCommand": false,
   "installCommand": "pnpm install",
   "outputDirectory": "web-app/build",
   "github": {
