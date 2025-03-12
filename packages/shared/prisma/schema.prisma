@@ -1,0 +1,63 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../dist/prisma/client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Page {
+  id        String   @id @default(cuid())
+  url       String   @unique
+  title     String
+  content   String
+  fetchedAt DateTime @default(now())
+  links     Link[]
+  workspace Workspace? @relation(fields: [workspaceId], references: [id])
+  workspaceId String?
+}
+
+model Link {
+  id         String  @id @default(cuid())
+  sourceId   String
+  targetUrl  String
+  processed  Boolean @default(false)
+  source     Page    @relation(fields: [sourceId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  workspaces    WorkspaceUser[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+model Workspace {
+  id          String    @id @default(cuid())
+  name        String
+  description String?
+  users       WorkspaceUser[]
+  pages       Page[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model WorkspaceUser {
+  id          String    @id @default(cuid())
+  workspaceId String
+  userId      String
+  role        String    @default("member") // "owner", "admin", "member"
+  workspace   Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([workspaceId, userId])
+} 

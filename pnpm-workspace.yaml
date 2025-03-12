@@ -1,0 +1,4 @@
+packages:
+  - 'packages/*'  # Includes packages/cli and packages/shared
+  - 'webs-app'    # Includes the webs-app directory
+  - './' 

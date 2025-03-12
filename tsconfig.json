@@ -1,0 +1,37 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "strict": true,
+    "declaration": true,
+    "sourceMap": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "jsx": "react",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "typeRoots": ["./node_modules/@types", "./src/types"]
+  },
+  "include": ["src/**/*"],
+  "exclude": [
+    "node_modules", 
+    "**/*.test.ts",
+    "web-app/**/*",
+    "webs-app/**/*",
+    "api/**/*",
+    "packages/shared/node_modules/**/*",
+    "src/app/**/*",
+    "src/components/ui/**/*",
+    "src/components/auth-provider.tsx",
+    "src/components/theme-provider.tsx",
+    "src/lib/ai.ts",
+    "src/lib/auth.ts",
+    "src/lib/db.ts",
+    "src/lib/utils.ts"
+  ]
+} 

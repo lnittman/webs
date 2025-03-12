@@ -1,0 +1,35 @@
+{
+  "name": "webs-shared",
+  "version": "1.0.0",
+  "description": "Shared functionality for Webs CLI and Web Application",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "jest",
+    "lint": "eslint src --ext .ts"
+  },
+  "keywords": [
+    "webs",
+    "shared",
+    "library"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.4",
+    "@prisma/adapter-neon": "^6.4.1",
+    "@vercel/postgres": "^0.10.0",
+    "@prisma/client": "^6.4.1",
+    "openrouter-sdk": "^1.0.6",
+    "ai": "^4.1.54"
+  },
+  "devDependencies": {
+    "@types/node": "^20.4.5",
+    "@typescript-eslint/eslint-plugin": "^6.2.0",
+    "@typescript-eslint/parser": "^6.2.0",
+    "eslint": "^8.45.0",
+    "prisma": "^6.4.1",
+    "typescript": "^5.1.6"
+  }
+}

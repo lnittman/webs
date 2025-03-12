@@ -1,0 +1,19 @@
+{
+  "name": "webs-shared",
+  "version": "1.0.0",
+  "description": "Shared utilities for Webs application",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.4.1"
+  },
+  "devDependencies": {
+    "prisma": "^6.4.1",
+    "typescript": "^5.1.6"
+  }
+}
