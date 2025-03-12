@@ -12,8 +12,11 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "jsx": "react",
+    "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "webs-shared": ["./packages/shared/src"],
+      "webs-shared/*": ["./packages/shared/src/*"]
     },
     "typeRoots": ["./node_modules/@types", "./src/types"]
   },

@@ -5,6 +5,7 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
+    "prebuild": "prisma generate",
     "build": "tsc",
     "test": "jest",
     "lint": "eslint src --ext .ts"
