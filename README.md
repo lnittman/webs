@@ -75,6 +75,88 @@ DATABASE_URL="file:./dev.db"
 OPENROUTER_API_KEY="your-api-key"
 ```
 
+## Troubleshooting
+
+
+## Deployment on Vercel with Cloud Services
+
+This application has been migrated from SQLite to a cloud-based architecture using the following services:
+
+- **Neon** - Serverless PostgreSQL database
+- **Upstash Redis** - Serverless Redis for caching
+- **Vercel Blob** - Content storage
+- **Vercel** - Deployment platform
+
+### Setting Up Cloud Services
+
+#### Neon (Database)
+
+1. Sign up at [Neon](https://neon.tech/) and create a new project
+2. Create a new PostgreSQL database
+3. Get your connection string: `postgresql://user:password@pg.neon.tech:5432/database`
+4. Set up the following environment variables:
+   - `NEON_DATABASE_URL` - Main connection string 
+   - `NEON_DIRECT_URL` - Direct connection string (with ?sslmode=require)
+
+#### Upstash Redis (Caching)
+
+1. Sign up at [Upstash](https://upstash.com/) and create a new Redis database
+2. Select the region closest to your users
+3. From the Upstash console, get your Redis URL and token
+4. Set up the following environment variables:
+   - `UPSTASH_REDIS_URL` - Redis connection URL
+   - `UPSTASH_REDIS_TOKEN` - Authentication token
+
+#### Vercel Blob (Content Storage)
+
+1. This service is automatically available when deploying to Vercel
+2. You'll need to set the `BLOB_READ_WRITE_TOKEN` environment variable in your Vercel project
+
+### Deploying to Vercel
+
+1. Push your repository to GitHub
+2. Sign up at [Vercel](https://vercel.com) and create a new project
+3. Connect your GitHub repository
+4. In the "Settings" section, add all environment variables from `.env.example`
+5. Deploy the project
+
+### Database Migration
+
+When migrating from SQLite to PostgreSQL:
+
+1. Generate a Prisma migration:
+   ```bash
+   cd webs-app
+   npx prisma migrate dev --name postgres-migration
+   ```
+
+2. Apply the migration to your Neon database:
+   ```bash
+   npx prisma migrate deploy
+   ```
+
+3. For data migration from SQLite to PostgreSQL, you can use a script or a tool like [pgloader](https://github.com/dimitri/pgloader)
+
+### Performance Considerations
+
+- **Database queries**: Set appropriate indexes in your Prisma schema
+- **Caching**: Critical data is cached in Upstash Redis
+- **Blob storage**: Large content is stored in Vercel Blob instead of the database
+
+### Troubleshooting
+
+- **Database Connection Issues**: 
+  - Ensure your IP is whitelisted in Neon's access control
+  - Verify SSL requirements in connection strings
+
+- **Redis Connection Issues**:
+  - Check if the Redis token is correctly configured
+  - Verify network access to Upstash servers
+
+- **Blob Storage Issues**:
+  - Ensure `BLOB_READ_WRITE_TOKEN` is properly set
+  - Check Vercel logs for any permission errors
+
 ## License
 
 MIT
@@ -304,7 +386,7 @@ npm install
 npm run dev
 
 # In a new terminal, navigate to the web app directory
-cd ../web-app
+cd webs-app
 
 # Install web app dependencies
 npm install

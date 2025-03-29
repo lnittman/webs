@@ -1,0 +1,55 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+  output          = "../generated/client"
+}
+
+datasource db {
+  provider     = "postgresql"
+  url          = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+// User model - will be connected with Clerk auth
+model User {
+  id              String          @id @default(cuid())
+  clerkId         String          @unique
+  email           String          @unique
+  name            String?
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  chats           Chat[]
+  chatMessages    ChatMessage[]
+}
+
+// Chat model for storing conversations
+model Chat {
+  id              String          @id @default(cuid())
+  title           String
+  userId          String
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  messages        ChatMessage[]
+
+  @@index([userId])
+}
+
+// Chat messages within a conversation
+model ChatMessage {
+  id              String          @id @default(cuid())
+  chatId          String
+  chat            Chat            @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  content         String          @db.Text
+  type            String          // e.g., "user", "ai", "system"
+  mode            String?         // e.g., "main", "spin", "think"
+  createdAt       DateTime        @default(now())
+
+  @@index([chatId])
+  @@index([userId])
+}

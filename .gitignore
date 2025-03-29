@@ -31,9 +31,12 @@ pnpm-debug.log*
 !.vscode/extensions.json
 .vercel
 .turbo
+.DS_Store
+*.pem
 
 # Database
 *.db
 *.db-journal
 *.sqlite
-*.sqlite-journal 
+*.sqlite-journal
+

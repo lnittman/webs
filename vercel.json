@@ -1,9 +1,32 @@
 {
   "version": 2,
-  "buildCommand": false,
+  "buildCommand": "cd webs-app && pnpm build",
   "installCommand": "pnpm install",
-  "outputDirectory": "web-app/build",
+  "outputDirectory": "webs-app/.next",
+  "devCommand": "cd webs-app && pnpm dev",
+  "framework": "nextjs",
   "github": {
     "silent": true
-  }
-} 
+  },
+  "regions": ["iad1"],
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/api/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    }
+  ]
+}

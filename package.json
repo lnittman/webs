@@ -1,59 +1,38 @@
 {
-  "name": "webs-cli",
-  "version": "1.0.0",
-  "description": "CLI tool for fetching web content via r.jina.ai and storing in SQLite",
-  "main": "dist/index.js",
-  "bin": {
-    "webs": "dist/index.js"
-  },
+  "name": "webs-xyz",
+  "version": "0.1.0",
   "scripts": {
-    "prebuild": "cd packages/shared && pnpm build",
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "dev": "ts-node src/index.ts",
-    "test": "jest",
-    "lint": "eslint src --ext .ts",
-    "prepare": "npm run build"
-  },
-  "keywords": [
-    "cli",
-    "jina",
-    "reader",
-    "markdown",
-    "sqlite"
-  ],
-  "author": "",
-  "license": "MIT",
-  "dependencies": {
-    "@neondatabase/serverless": "^0.10.4",
-    "@prisma/adapter-neon": "^6.4.1",
-    "@prisma/client": "^6.4.1",
-    "@vercel/postgres": "^0.10.0",
-    "ai": "^4.1.54",
-    "better-sqlite3": "^8.5.0",
-    "chalk": "^4.1.2",
-    "clipboardy": "^2.3.0",
-    "commander": "^11.0.0",
-    "markdown-it": "^13.0.1",
-    "node-fetch": "^2.6.9",
-    "openrouter-sdk": "^1.0.6",
-    "ora": "^5.4.1",
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "webs-shared": "file:./packages/shared"
+    "build": "turbo build",
+    "dev": "turbo dev",
+    "lint": "ultracite lint",
+    "format": "ultracite format",
+    "analyze": "turbo analyze",
+    "clean": "turbo clean",
+    "boundaries": "turbo boundaries",
+    "bump-deps": "npx npm-check-updates --deep -u -x react-day-picker && pnpm install",
+    "bump-ui": "npx shadcn@latest add --all --overwrite -c packages/design-system",
+    "migrate": "cd packages/database && npx prisma format && npx prisma generate && npx prisma db push"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.4",
-    "@types/markdown-it": "^12.2.3",
-    "@types/node": "^20.4.5",
-    "@types/node-fetch": "^2.6.4",
-    "@types/react": "^18.2.0",
-    "@types/react-dom": "^18.2.0",
-    "@typescript-eslint/eslint-plugin": "^6.2.0",
-    "@typescript-eslint/parser": "^6.2.0",
-    "eslint": "^8.45.0",
-    "prisma": "^6.4.1",
-    "ts-node": "^10.9.1",
-    "typescript": "^5.1.6"
+    "@auto-it/first-time-contributor": "^11.3.0",
+    "@biomejs/biome": "1.9.4",
+    "@repo/typescript-config": "workspace:*",
+    "@turbo/gen": "^2.4.4",
+    "@types/node": "^22.13.9",
+    "turbo": "^2.4.4",
+    "typescript": "^5.8.2",
+    "ultracite": "^4.1.20",
+    "vitest": "^3.0.7"
+  },
+  "packageManager": "pnpm@10.5.2",
+  "dependencies": {
+    "@clerk/elements": "^0.23.5",
+    "@google/generative-ai": "^0.24.0",
+    "@libsql/client": "^0.15.1",
+    "@radix-ui/react-visually-hidden": "^1.1.2",
+    "@react-hookz/web": "^25.1.0",
+    "@t3-oss/env-nextjs": "^0.12.0",
+    "cmdk": "^1.1.1",
+    "libsql": "^0.5.3"
   }
 }

@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<prompt>
+  <metadata>
+    <tool_id>summarize_group</tool_id>
+    <prompt_version>1.0</prompt_version>
+    <purpose>Synthesize summaries from related pages into a cohesive group summary.</purpose>
+  </metadata>
+
+  <task>
+    <objective>Analyze summaries from related pages and provide a synthesized summary that captures common themes and key insights.</objective>
+  </task>
+
+  <context>
+    <group_name>{{groupName}}</group_name>
+    <summaries>
+      {{summariesText}}
+    </summaries>
+  </context>
+
+  <instructions>
+    <step>Identify common themes and concepts across all summaries.</step>
+    <step>Note unique or complementary insights from different sources.</step>
+    <step>Create a cohesive narrative that integrates the information.</step>
+    <step>Synthesize into 3-4 sentences that capture the essential information.</step>
+  </instructions>
+
+  <constraints>
+    <rule>Use only 3-4 sentences in total.</rule>
+    <rule>Focus on integrating information rather than simply listing points.</rule>
+    <avoid>Contradictory information without acknowledging the discrepancy.</avoid>
+    <avoid>Information not present in the original summaries.</avoid>
+  </constraints>
+
+  <output_format>
+    <description>Plain text summary within &lt;group_summary&gt;...&lt;/group_summary&gt; tags.</description>
+    <requirement>Only include the summary text within the tags, no additional commentary.</requirement>
+  </output_format>
+</prompt> 

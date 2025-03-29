@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<prompt>
+  <metadata>
+    <tool_id>summarize_crawl</tool_id>
+    <prompt_version>1.0</prompt_version>
+    <purpose>Create a comprehensive summary from multiple group summaries.</purpose>
+  </metadata>
+
+  <task>
+    <objective>Synthesize multiple group summaries into a comprehensive overview that captures major findings and insights.</objective>
+  </task>
+
+  <context>
+    <original_query>{{query}}</original_query>
+    <group_summaries>
+      {{groupSummariesText}}
+    </group_summaries>
+  </context>
+
+  <instructions>
+    <step>Identify the overarching themes across all group summaries.</step>
+    <step>Extract the most significant insights and findings.</step>
+    <step>Connect related concepts across different groups.</step>
+    <step>Create a cohesive narrative that addresses the original query if provided.</step>
+    <step>Synthesize into 4-5 sentences that provide a comprehensive overview.</step>
+  </instructions>
+
+  <constraints>
+    <rule>Use only 4-5 sentences in total.</rule>
+    <rule>Focus on high-level insights rather than specific details.</rule>
+    <rule>Ensure the summary addresses the original query if provided.</rule>
+    <avoid>Information not present in the group summaries.</avoid>
+    <avoid>Overly technical language unless necessary.</avoid>
+  </constraints>
+
+  <output_format>
+    <description>Plain text summary within &lt;crawl_summary&gt;...&lt;/crawl_summary&gt; tags.</description>
+    <requirement>Only include the summary text within the tags, no additional commentary.</requirement>
+  </output_format>
+</prompt> 
