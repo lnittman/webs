@@ -3,7 +3,7 @@ import { google } from "@ai-sdk/google";
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 
-import { loadPromptTemplate, fillTemplate } from "../../utils/loadPrompt";
+import { loadPromptTemplate, fillTemplate } from "../../../utils/loadPrompt";
 
 const geminiModel = google("gemini-2.0-flash") as any;
 

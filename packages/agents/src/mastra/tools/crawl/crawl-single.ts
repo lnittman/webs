@@ -1,7 +1,7 @@
 import { createTool } from '@mastra/core/tools';
 import { z } from 'zod';
 
-import { extractLinks } from '../../utils/extract-links';
+import { extractLinks } from '../../utils/extractLinks';
 
 // Define the input schema
 const inputSchema = z.object({

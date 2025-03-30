@@ -2,7 +2,7 @@ import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
 import { google } from "@ai-sdk/google";
 import { generateText } from "ai";
-import { loadPromptTemplate, fillTemplate } from "../../utils/loadPrompt";
+import { loadPromptTemplate, fillTemplate } from "../../../utils/loadPrompt";
 
 // @ts-ignore - Ignore version compatibility issues with the AI SDK
 const geminiModel = google("gemini-2.0-flash");

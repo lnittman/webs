@@ -1,9 +1,9 @@
+import { generateText } from "ai";
+import { google } from "@ai-sdk/google";
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
-import { google } from "@ai-sdk/google";
-import { generateText } from "ai";
 
-const geminiModel = google("gemini-2.0-flash");
+const geminiModel = google("gemini-2.0-flash") as any;
 
 /**
  * Searches the web to find relevant URLs
