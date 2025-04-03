@@ -2,6 +2,35 @@
  * Agents API service - handles interactions with all agents endpoints
  */
 
+// Define type for agent modes
+export type AgentMode = 'main' | 'spin' | 'think';
+
+// Define base agent request types
+export interface BaseAgentRequest {
+  mode: AgentMode;
+  prompt: string;
+  stream?: boolean;
+}
+
+export interface MainAgentRequest extends BaseAgentRequest {
+  mode: 'main';
+  maxDepth?: number;
+}
+
+export interface ThinkAgentRequest extends BaseAgentRequest {
+  mode: 'think';
+  maxDepth?: number;
+  feedbackEnabled?: boolean;
+}
+
+export interface SpinAgentRequest extends BaseAgentRequest {
+  mode: 'spin';
+  maxDepth?: number;
+}
+
+// Union type of all possible agent requests
+export type AgentRequest = MainAgentRequest | ThinkAgentRequest | SpinAgentRequest;
+
 // Base URL for agents API
 const BASE_URL = '/api/agents';
 
@@ -23,24 +52,12 @@ async function fetchWithErrorHandling(url: string, options: RequestInit = {}) {
 }
 
 // Unified function to fetch responses from any agent type
-export async function fetchAgentResponse(input: {
-  mode: 'main' | 'spin' | 'think';
-  url?: string;
-  query?: string;
-  prompt?: string;
-  maxDepth?: number;
-  feedbackEnabled?: boolean;
-  stream?: boolean;
-}) {
-  // Determine the endpoint based on the mode
-  const endpoint = `${BASE_URL}/${input.mode}`;
+export async function fetchAgentResponse(input: AgentRequest) {
+  // All requests now go to the stream endpoint
+  const endpoint = `${BASE_URL}/stream`;
   
-  // Prepare request payload based on the mode
-  let payload: any = {
-    ...input,
-    // Omit the mode as it's already in the endpoint
-    mode: undefined
-  };
+  // Clone and prepare request payload
+  const payload = { ...input };
   
   // Default stream to false if not specified
   if (payload.stream === undefined) {
@@ -54,39 +71,22 @@ export async function fetchAgentResponse(input: {
   });
 }
 
-// Main agent functions - non-streaming version (legacy)
-export async function fetchMainResponse(input: { url?: string; query?: string; stream?: boolean }) {
+// Convenience functions for different agent types
+export function fetchMainResponse(input: { prompt: string; maxDepth?: number; stream?: boolean }) {
   return fetchAgentResponse({
     mode: 'main',
     ...input
   });
 }
 
-// Main agent streaming configuration
-export function streamMainResponse(input: { url?: string; query?: string }) {
-  return streamAgentResponse({
-    mode: 'main',
-    ...input
-  });
-}
-
-// Spin agent functions
-export async function fetchSpinResponse(input: { 
-  prompt?: string; 
-  maxDepth?: number;
-}) {
+export function fetchSpinResponse(input: { prompt: string; maxDepth?: number; stream?: boolean }) {
   return fetchAgentResponse({
     mode: 'spin',
     ...input
   });
 }
 
-// Think agent functions
-export async function fetchThinkResponse(input: {
-  prompt: string;
-  maxDepth?: number;
-  feedbackEnabled?: boolean;
-}) {
+export function fetchThinkResponse(input: { prompt: string; maxDepth?: number; feedbackEnabled?: boolean; stream?: boolean }) {
   return fetchAgentResponse({
     mode: 'think',
     ...input
@@ -106,34 +106,10 @@ export async function submitFeedback(input: {
 }
 
 // Unified function to create streaming configuration for any agent
-export function streamAgentResponse(input: {
-  mode: 'main' | 'spin' | 'think';
-  url?: string;
-  query?: string;
-  prompt?: string;
-  urls?: string[];
-  maxDepth?: number;
-  feedbackEnabled?: boolean;
-}) {
-  // Special case for main mode - use dedicated endpoint
-  if (input.mode === 'main') {
-    // Return the URL and request options for streaming
-    const url = `${BASE_URL}/main`;
-    const options = {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        url: input.url,
-        query: input.query,
-        stream: true
-      }),
-    };
-    
-    return { url, options };
-  }
-  
-  // Use the generic stream endpoint for other modes
+export function streamAgentResponse(input: AgentRequest) {
+  // All requests go to the stream endpoint
   const url = `${BASE_URL}/stream`;
+  
   const options = {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

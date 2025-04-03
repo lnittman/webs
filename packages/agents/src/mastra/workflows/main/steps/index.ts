@@ -1,6 +1,9 @@
-export { initialCrawlStep } from './initialCrawlStep';
-export { summarizePageStep } from './summarizePageStep';
-export { extractLinksStep } from './extractLinksStep';
+export { analyzeInputStep } from './analyzeInputStep';
+export { initialCrawlStep } from '../../steps/initialCrawlStep';
+export { webSearchStep } from '../../steps/webSearchStep';
+export { summarizePageStep } from '../../steps/summarizePageStep';
+export { extractLinksStep } from '../../steps/extractLinksStep';
 export { determineRelevantLinksStep } from './determineRelevantLinksStep';
 export { crawlRelatedLinksStep } from './crawlRelatedLinksStep';
-export { createComprehensiveSummaryStep } from './createComprehensiveSummaryStep'; 
+export { createComprehensiveSummaryStep } from './createComprehensiveSummaryStep';
+export { generateFinalResponseStep } from './generateFinalResponseStep'; 

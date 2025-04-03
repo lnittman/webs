@@ -1,6 +1,6 @@
 import { Step } from "@mastra/core/workflows";
 import { z } from "zod";
-import * as tools from "../../../tools";
+import * as tools from "../../tools";
 
 export const summarizePageStep = new Step({
   id: "summarizePage",
@@ -11,7 +11,12 @@ export const summarizePageStep = new Step({
   }),
   execute: async ({ context }) => {
     console.log(`[WORKFLOW:summarizePage] Summarizing: ${context.inputData.url}`);
-    if (tools.summarize_single && tools.summarize_single.execute) {
+    
+    try {
+      if (!tools.summarize_single || !tools.summarize_single.execute) {
+        throw new Error("summarize_single tool not available");
+      }
+      
       const result = await tools.summarize_single.execute({ 
         context: {
           content: context.inputData.content,
@@ -19,9 +24,15 @@ export const summarizePageStep = new Step({
           title: context.inputData.title || ""
         } 
       });
+      
       console.log(`[WORKFLOW:summarizePage] Completed for: ${context.inputData.url}`);
       return result;
+    } catch (error) {
+      console.error(`[WORKFLOW:summarizePage] Error: ${error instanceof Error ? error.message : String(error)}`);
+      return {
+        summary: `Failed to summarize ${context.inputData.url}`,
+        error: error instanceof Error ? error.message : String(error)
+      };
     }
-    throw new Error("summarize_single tool not available");
   }
 }); 

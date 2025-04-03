@@ -1,7 +1,12 @@
 {
-  "extends": "@repo/typescript-config/nextjs.json",
+  "extends": "@repo/typescript-config/base.json",
   "compilerOptions": {
     "baseUrl": ".",
+    // Cloudflare Worker specific settings
+    "target": "es2020",
+    "module": "es2020",
+    "lib": ["es2020", "WebWorker"],
+    "types": ["node", "@cloudflare/workers-types"]
   },
   "include": ["**/*.ts", "**/*.tsx"],
   "exclude": [
@@ -10,4 +15,3 @@
     ".mastra"
   ]
 }
-

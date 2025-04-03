@@ -1,14 +1,14 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 
 export type AgentMode = 'main' | 'spin' | 'think';
 
 export interface StreamRequest {
   mode: AgentMode;
-  url?: string;
-  query?: string;
-  urls?: string[];
+  prompt: string;
   maxDepth?: number;
   feedbackEnabled?: boolean;
+  threadId?: string;
+  resourceId?: string;
 }
 
 export interface StreamState {
@@ -17,6 +17,9 @@ export interface StreamState {
   streamingCommand: string;
   error: string | null;
   isDone: boolean;
+  threadId?: string;
+  resourceId?: string;
+  requestId?: string;
 }
 
 export interface StreamResult extends StreamState {
@@ -24,6 +27,19 @@ export interface StreamResult extends StreamState {
   appendStreamingContent: (content: string) => void;
   finishStreaming: () => void;
   resetStream: () => void;
+  abortStream: () => void;
+}
+
+interface StreamChunk {
+  chunk?: string;
+  done?: boolean;
+  error?: string;
+  progress?: string;
+  step?: string;
+  timestamp?: number;
+  threadId?: string;
+  resourceId?: string;
+  requestId?: string;
 }
 
 /**
@@ -39,285 +55,288 @@ export function useAgentStream(baseUrl: string = '/api/agents'): StreamResult {
     isDone: false,
   });
   
-  // Stream request ID to help deduplicate requests
-  const [currentRequestId, setCurrentRequestId] = useState<string | null>(null);
+  // Track current request ID
+  const [requestId, setRequestId] = useState<string | null>(null);
   
-  // Buffer for streaming content to handle text processing
+  // Buffer for content processing
   const [streamBuffer, setStreamBuffer] = useState<string>('');
   
   // Store the active controller for cleanup
-  const [controller, setController] = useState<AbortController | null>(null);
+  const controllerRef = useRef<AbortController | null>(null);
+  
+  // Track retries
+  const retriesRef = useRef<number>(0);
+  
+  // Maximum number of automatic retries
+  const MAX_RETRIES = 2;
   
   // Cleanup on unmount
   useEffect(() => {
     return () => {
-      if (controller) {
+      if (controllerRef.current) {
         try {
-          controller.abort('Component unmounted');
+          controllerRef.current.abort('Component unmounted');
         } catch (error) {
           console.error('[useAgentStream] Error aborting controller:', error);
         }
+        controllerRef.current = null;
       }
     };
-  }, [controller]);
-  
-  // Process streaming content with intelligent boundary detection
-  const processStreamChunk = useCallback((newChunk: string): string => {
-    // Simply append the new chunk to the existing content
-    return streamState.streamingContent + newChunk;
-  }, [streamState.streamingContent]);
+  }, []);
 
   // Start streaming from an agent
   const startStreaming = useCallback(async (request: StreamRequest, command: string) => {
-    // Console log to help debug double requests
-    console.log(`[useAgentStream] Starting stream for: ${command.substring(0, 30)}${command.length > 30 ? '...' : ''}`);
-    
-    // Generate a request ID based on the command and timestamp to help deduplicate
-    const requestId = `${command.slice(0, 10)}-${Date.now()}`;
-    
-    // Close any existing streams
-    if (controller) {
-      console.log('[useAgentStream] Aborting existing stream controller');
-      try {
-        controller.abort('New request started');
-      } catch (error) {
-        console.error('[useAgentStream] Error aborting controller:', error);
-      }
-    }
-    
-    // If we're already streaming the same command, don't start a new stream
-    if (streamState.isStreaming && streamState.streamingCommand === command) {
-      console.log('[useAgentStream] Already streaming this command, ignoring duplicate request');
-      return;
-    }
-    
-    // Reset streaming state
-    setStreamBuffer('');
-    setStreamState(prev => ({
-      isStreaming: true,
-      streamingContent: '',
-      streamingCommand: command,
-      error: null,
-      isDone: false,
-    }));
-    setCurrentRequestId(requestId);
-    
-    // Create new abort controller
-    const newController = new AbortController();
-    setController(newController);
-    
-    // Track unique chunks to prevent duplicates
-    const processedChunks = new Set();
-    
-    try {
-      // Prepare the endpoint URL
-      let url: string;
-      let options: RequestInit;
+    // Helper function to prepare the request
+    const prepareRequest = () => {
+      console.log(`[useAgentStream] Starting stream for: ${command.substring(0, 30)}${command.length > 30 ? '...' : ''}`);
       
-      // Special case for main mode - use dedicated endpoint
-      if (request.mode === 'main') {
-        url = `${baseUrl}/main`;
-        options = {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            url: request.url,
-            query: request.query,
-            stream: true,
-          }),
-          signal: newController.signal,
-        };
-      } else {
-        // Use the generic stream endpoint for other modes
-        url = `${baseUrl}/stream`;
-        options = {
+      // Close any existing streams
+      if (controllerRef.current) {
+        console.log('[useAgentStream] Aborting existing stream controller');
+        try {
+          controllerRef.current.abort('New request started');
+        } catch (error) {
+          console.error('[useAgentStream] Error aborting controller:', error);
+        }
+        controllerRef.current = null;
+      }
+      
+      // Reset streaming state
+      setStreamBuffer('');
+      setStreamState(prev => ({
+        isStreaming: true,
+        streamingContent: '',
+        streamingCommand: command,
+        error: null,
+        isDone: false,
+      }));
+      setRequestId(null);
+      
+      // Create new abort controller
+      const newController = new AbortController();
+      controllerRef.current = newController;
+      
+      return newController;
+    };
+    
+    // Handle SSE stream setup and processing
+    const processStream = async (controller: AbortController) => {
+      try {
+        // Prepare the endpoint URL and options
+        const url = `${baseUrl}/stream`;
+        const options: RequestInit = {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(request),
-          signal: newController.signal,
+          signal: controller.signal,
         };
-      }
-      
-      // Start the stream
-      const response = await fetch(url, options);
-      
-      // Handle duplicate request errors (HTTP 429)
-      if (response.status === 429) {
-        console.log('[useAgentStream] Duplicate request detected by server, handling gracefully');
         
-        // Set a special message when a duplicate is detected
-        setStreamState(prev => ({
-          ...prev,
-          streamingContent: 'Processing your request... (Another instance of this request is already in progress)',
-          isStreaming: true,
-        }));
+        // Start the stream
+        const response = await fetch(url, options);
         
-        // Wait a bit then try again
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
-        // Rather than ending with error, let's retry the request
-        setStreamState(prev => ({
-          ...prev,
-          streamingContent: 'Waiting for the previous request to complete...',
-        }));
-        
-        // Wait to see if the previous request completes
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        
-        // Finish with a notice
-        setStreamState(prev => ({
-          ...prev,
-          isStreaming: false,
-          isDone: true,
-          streamingContent: 'Your request is being processed in another tab or window. Please check there for results.',
-        }));
-        
-        return;
-      }
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      if (!response.body) {
-        throw new Error("Response body is null");
-      }
-      
-      // Process the stream with Reader API
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      
-      // Process chunks as they arrive
-      while (true) {
-        const { done, value } = await reader.read();
-        
-        if (done) {
-          // Process any remaining buffer content
-          if (streamBuffer) {
+        // Handle HTTP errors
+        if (!response.ok) {
+          const statusCode = response.status;
+          
+          // Special handling for 429 (duplicate request)
+          if (statusCode === 429) {
+            const errorData = await response.json();
+            console.log('[useAgentStream] Duplicate request detected by server:', errorData);
+            
+            // Store the request ID if provided
+            if (errorData.requestId) {
+              setRequestId(errorData.requestId);
+            }
+            
+            // Set a special message for duplicate requests
             setStreamState(prev => ({
               ...prev,
-              streamingContent: prev.streamingContent + streamBuffer,
+              streamingContent: 'This request is already being processed. Please wait...',
+              error: 'Duplicate request',
             }));
-            setStreamBuffer('');
+            
+            // After a few seconds, check if we need to retry
+            await new Promise(resolve => setTimeout(resolve, 3000));
+            
+            // If we haven't exceeded max retries, try again with a slight delay
+            if (retriesRef.current < MAX_RETRIES) {
+              retriesRef.current++;
+              console.log(`[useAgentStream] Retrying request (${retriesRef.current}/${MAX_RETRIES})`);
+              
+              // Retry with exponential backoff
+              await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retriesRef.current)));
+              prepareRequest();
+              return processStream(controllerRef.current!);
+            } else {
+              // Max retries exceeded
+              throw new Error('Maximum retries exceeded. Please try again later.');
+            }
           }
+          
+          throw new Error(`HTTP error! status: ${statusCode}`);
+        }
+        
+        if (!response.body) {
+          throw new Error("Response body is null");
+        }
+        
+        // Reset retry counter on successful response
+        retriesRef.current = 0;
+        
+        // Process the stream with Reader API
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        
+        // Process chunks as they arrive
+        while (true) {
+          const { done, value } = await reader.read();
+          
+          if (done) {
+            // Process any remaining buffer content
+            if (streamBuffer) {
+              setStreamState(prev => ({
+                ...prev,
+                streamingContent: prev.streamingContent + streamBuffer,
+              }));
+              setStreamBuffer('');
+            }
+            
+            setStreamState(prev => ({
+              ...prev,
+              isStreaming: false,
+              isDone: true,
+            }));
+            controllerRef.current = null;
+            break;
+          }
+          
+          // Decode the chunk and add it to buffer
+          buffer += decoder.decode(value, { stream: true });
+          
+          // Process complete SSE messages
+          const lines = buffer.split('\n\n');
+          buffer = lines.pop() || ''; // Keep incomplete chunk in buffer
+          
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.substring(6)) as StreamChunk;
+                
+                // Store request ID if provided
+                if (data.requestId && !requestId) {
+                  setRequestId(data.requestId);
+                }
+                
+                // Store thread and resource IDs if provided
+                if (data.threadId || data.resourceId) {
+                  setStreamState(prev => ({
+                    ...prev,
+                    threadId: data.threadId,
+                    resourceId: data.resourceId,
+                  }));
+                }
+                
+                if (data.done) {
+                  // Process any remaining buffer content
+                  if (streamBuffer) {
+                    setStreamState(prev => ({
+                      ...prev,
+                      streamingContent: prev.streamingContent + streamBuffer,
+                    }));
+                    setStreamBuffer('');
+                  }
+                  
+                  setStreamState(prev => ({
+                    ...prev,
+                    isStreaming: false,
+                    isDone: true,
+                  }));
+                  controllerRef.current = null;
+                  return;
+                }
+                
+                if (data.error) {
+                  throw new Error(data.error);
+                }
+                
+                if (data.chunk) {
+                  // Append the chunk to our content
+                  setStreamState(prev => {
+                    // Avoid duplicate chunks - only add if it's not already a suffix of our content
+                    const newContent = prev.streamingContent + data.chunk;
+                    return {
+                      ...prev,
+                      streamingContent: newContent
+                    };
+                  });
+                }
+                
+                // Handle progress updates and steps
+                if (data.progress || data.step) {
+                  console.log(`[useAgentStream] Progress: ${data.progress || data.step}`);
+                }
+              } catch (parseError) {
+                console.error('[useAgentStream] Error parsing SSE message:', parseError, 'Original line:', line);
+              }
+            }
+          }
+        }
+      } catch (error) {
+        // Only set error state if we're still the active controller
+        if (controllerRef.current === controller) {
+          console.error('[useAgentStream] Streaming error:', error);
           
           setStreamState(prev => ({
             ...prev,
             isStreaming: false,
-            isDone: true,
+            error: error instanceof Error ? error.message : String(error),
           }));
-          setController(null);
-          break;
-        }
-        
-        // Decode the chunk and add it to buffer
-        buffer += decoder.decode(value, { stream: true });
-        
-        // Process complete SSE messages
-        const lines = buffer.split('\n\n');
-        buffer = lines.pop() || ''; // Keep incomplete chunk in buffer
-        
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.substring(6));
-              
-              if (data.done) {
-                // Process any remaining buffer content
-                if (streamBuffer) {
-                  setStreamState(prev => ({
-                    ...prev,
-                    streamingContent: prev.streamingContent + streamBuffer,
-                  }));
-                  setStreamBuffer('');
-                }
-                
-                setStreamState(prev => ({
-                  ...prev,
-                  isStreaming: false,
-                  isDone: true,
-                }));
-                setController(null);
-                return;
-              }
-              
-              if (data.error) {
-                throw new Error(data.error);
-              }
-              
-              if (data.chunk) {
-                // Check if we've already processed this chunk to avoid duplicates
-                // Use a hash or truncated version of the chunk to identify it
-                const chunkId = data.chunk.substring(0, Math.min(20, data.chunk.length));
-                
-                if (!processedChunks.has(chunkId)) {
-                  processedChunks.add(chunkId);
-                  
-                  // Process the chunk by simply appending it
-                  setStreamState(prev => ({
-                    ...prev,
-                    streamingContent: prev.streamingContent + data.chunk,
-                  }));
-                } else {
-                  console.log('[useAgentStream] Skipped duplicate chunk');
-                }
-              }
-            } catch (error) {
-              console.error("Error parsing SSE message:", error);
-            }
-          }
+          
+          controllerRef.current = null;
         }
       }
-    } catch (error) {
-      console.error("Error in streaming:", error);
-      
-      setStreamState(prev => ({
-        ...prev,
-        isStreaming: false,
-        error: error instanceof Error ? error.message : "An unknown error occurred",
-      }));
-      setController(null);
-    }
-  }, [baseUrl, controller, processStreamChunk, streamBuffer]);
-  
-  // Append content to the streaming content
+    };
+    
+    // Start the streaming process
+    const controller = prepareRequest();
+    await processStream(controller);
+  }, [baseUrl, requestId, streamBuffer]);
+
+  // Manually append content - useful for client-side handling
   const appendStreamingContent = useCallback((content: string) => {
     setStreamState(prev => ({
       ...prev,
       streamingContent: prev.streamingContent + content,
     }));
   }, []);
-  
-  // Finish streaming
+
+  // Manually finish streaming - useful for client-side handling
   const finishStreaming = useCallback(() => {
-    // Process any remaining buffer content
-    if (streamBuffer) {
-      setStreamState(prev => ({
-        ...prev,
-        streamingContent: prev.streamingContent + streamBuffer,
-      }));
-      setStreamBuffer('');
-    }
-    
     setStreamState(prev => ({
       ...prev,
       isStreaming: false,
       isDone: true,
     }));
     
-    if (controller) {
-      try {
-        controller.abort('Stream finished');
-      } catch (error) {
-        console.error('[useAgentStream] Error aborting controller on finish:', error);
-      }
-      setController(null);
+    if (controllerRef.current) {
+      controllerRef.current = null;
     }
-  }, [controller, streamBuffer]);
-  
-  // Reset the stream state
+  }, []);
+
+  // Reset streaming state
   const resetStream = useCallback(() => {
+    // Abort any active stream
+    if (controllerRef.current) {
+      try {
+        controllerRef.current.abort('Stream reset');
+      } catch (error) {
+        console.error('[useAgentStream] Error aborting controller during reset:', error);
+      }
+      controllerRef.current = null;
+    }
+    
+    // Reset state
     setStreamState({
       isStreaming: false,
       streamingContent: '',
@@ -326,33 +345,49 @@ export function useAgentStream(baseUrl: string = '/api/agents'): StreamResult {
       isDone: false,
     });
     setStreamBuffer('');
-    
-    if (controller) {
-      try {
-        controller.abort('Stream reset');
-      } catch (error) {
-        console.error('[useAgentStream] Error aborting controller on reset:', error);
-      }
-      setController(null);
-    }
-  }, [controller]);
+    setRequestId(null);
+    retriesRef.current = 0;
+  }, []);
   
+  // Abort the current stream
+  const abortStream = useCallback(() => {
+    if (controllerRef.current) {
+      try {
+        controllerRef.current.abort('User cancelled');
+        console.log('[useAgentStream] Stream aborted by user');
+      } catch (error) {
+        console.error('[useAgentStream] Error aborting controller:', error);
+      }
+      controllerRef.current = null;
+      
+      // Update state to reflect abortion
+      setStreamState(prev => ({
+        ...prev,
+        isStreaming: false,
+        error: 'Request cancelled',
+      }));
+    }
+  }, []);
+
   return {
     ...streamState,
     startStreaming,
     appendStreamingContent,
     finishStreaming,
     resetStream,
+    abortStream
   };
 }
 
-// Helper function to check if text is a URL
+// Helper to detect URLs
 export function isUrl(text: string): boolean {
   try {
-    new URL(text.trim());
+    new URL(text);
     return true;
-  } catch (e) {
-    return false;
+  } catch {
+    // Check for common URL patterns without protocol
+    const urlPattern = /^(www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b([-a-zA-Z0-9()@:%_\+.~#?&//=]*)$/i;
+    return urlPattern.test(text);
   }
 }
 

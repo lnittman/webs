@@ -1,6 +1,5 @@
 import { Step } from "@mastra/core/workflows";
 import { z } from "zod";
-import extractLinks from "../../../utils/extractLinks";
 
 export const extractLinksStep = new Step({
   id: "extractLinks",
@@ -12,14 +11,25 @@ export const extractLinksStep = new Step({
   }),
   execute: async ({ context }) => {
     console.log(`[WORKFLOW:extractLinks] Processing: ${context.inputData.url}`);
+    
     // Extract URLs from the content and links array
     const linksFromArray = context.inputData.links || [];
     
-    // If we don't have links from the array, extract from content
+    // If we have links already, just use those
     let extractedLinks = linksFromArray;
-    if (extractedLinks.length === 0) {
+    
+    // Otherwise, try to extract them from the content
+    if (extractedLinks.length === 0 && context.inputData.content) {
       console.log(`[WORKFLOW:extractLinks] No provided links, extracting from content`);
-      extractedLinks = extractLinks(context.inputData.content, context.inputData.url);
+      
+      // Simple URL extraction from content
+      const urlRegex = /(https?:\/\/[^\s"'<>]+)/g;
+      const matches = [...(context.inputData.content.match(urlRegex) || [])];
+      
+      // Add any found links
+      if (matches.length > 0) {
+        extractedLinks = [...matches];
+      }
     }
     
     // Filter links to make sure they're valid URLs
