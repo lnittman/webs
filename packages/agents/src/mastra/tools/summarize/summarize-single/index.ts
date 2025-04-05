@@ -8,7 +8,33 @@ import { loadPromptTemplate, fillTemplate } from "../../../utils/loadPrompt";
 const geminiModel = google("gemini-2.0-flash");
 
 // Load the prompt template
-const promptTemplate = loadPromptTemplate("tools/summarize/summarize-single/prompt.xml");
+const promptTemplate = loadPromptTemplate("tools/summarize/summarize-single/prompt.xml", `
+<prompt>
+  <task>
+    Summarize the following content:
+    
+    {{content}}
+    
+    The user wants to know about: {{query}}
+  </task>
+  
+  <guidelines>
+    <guideline>Create a concise but comprehensive summary</guideline>
+    <guideline>Focus on information relevant to the user's query</guideline>
+    <guideline>Preserve the key points and main arguments</guideline>
+    <guideline>Maintain factual accuracy</guideline>
+    <guideline>Use clear, direct language</guideline>
+    <guideline>Extract 3-5 key points or insights</guideline>
+  </guidelines>
+  
+  <output_format>
+    Provide a well-structured summary with:
+    1. A concise overview paragraph
+    2. Bulleted key points
+    3. Any relevant metrics or data
+  </output_format>
+</prompt>
+`);
 
 /**
  * Summarizes a single page's content

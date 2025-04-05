@@ -11,16 +11,11 @@ import * as spinSteps from './steps';
 export const spinWorkflow = new Workflow({
   name: "spin",
   triggerSchema: z.object({
-    // User's input (can be prompt text or URL)
-    prompt: z.string().min(1),
-    // Optional ID for memory/conversation thread
-    threadId: z.string().optional(),
-    // Optional ID for user/resource
-    resourceId: z.string().optional(),
-    // Optional parameter to limit breadth 
-    maxBreadth: z.number().min(1).max(10).default(5).optional(),
-    // Optional parameter to limit iterations
-    maxIterations: z.number().min(1).max(3).default(2).optional(),
+    prompt: z.string().min(1).describe("The user's query or prompt"),
+    threadId: z.string().optional().describe("Thread ID for conversation context"),
+    resourceId: z.string().optional().describe("Optional ID for user/resource"),
+    maxBreadth: z.number().min(1).max(10).default(5).optional().describe("Maximum number of concurrent connections"),
+    maxIterations: z.number().min(1).max(3).default(2).optional().describe("Maximum number of iterations"),
   }),
 });
 

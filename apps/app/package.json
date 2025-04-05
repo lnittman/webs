@@ -8,11 +8,13 @@
     "analyze": "ANALYZE=true pnpm build",
     "test": "NODE_ENV=test vitest run",
     "clean": "git clean -xdf .cache .turbo dist node_modules",
-    "typecheck": "tsc --noEmit --emitDeclarationOnly false"
+    "typecheck": "tsc --noEmit --emitDeclarationOnly false",
+    "postinstall": "chmod +x next.config.js"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.12.9",
     "@clerk/themes": "^2.2.20",
+    "@mastra/client-js": "^0.1.13",
     "@phosphor-icons/react": "^2.1.7",
     "@prisma/client": "6.4.1",
     "@repo/auth": "workspace:*",

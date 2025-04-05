@@ -5,7 +5,35 @@ import { z } from "zod";
 import { loadPromptTemplate, fillTemplate } from "../../../utils/loadPrompt";
 
 // Load the prompt template
-const promptTemplate = loadPromptTemplate("tools/summarize/summarize-group/prompt.xml");
+const promptTemplate = loadPromptTemplate("tools/summarize/summarize-group/prompt.xml", `
+<prompt>
+  <task>
+    Group the following summaries into logical topics and create a summary for each group:
+    
+    {{summaries}}
+    
+    The query is: {{query}}
+  </task>
+  
+  <guidelines>
+    <guideline>Identify common themes or topics among the summaries</guideline>
+    <guideline>Group related summaries together</guideline>
+    <guideline>Create 2-5 logical groups (as appropriate)</guideline>
+    <guideline>Give each group a descriptive name</guideline>
+    <guideline>Write a concise summary for each group</guideline>
+    <guideline>Focus on information relevant to the original query</guideline>
+    <guideline>Identify key insights that emerge from each grouping</guideline>
+  </guidelines>
+  
+  <output_format>
+    For each group, provide:
+    1. A clear topic/group name
+    2. A list of sources in this group
+    3. A concise summary of the group's content
+    4. 3-5 key points or insights from this group
+  </output_format>
+</prompt>
+`);
 
 /**
  * Summarizes a group of related pages

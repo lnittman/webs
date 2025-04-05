@@ -4,7 +4,29 @@ import { google } from "@ai-sdk/google";
 import { generateText } from "ai";
 import { loadPromptTemplate, fillTemplate } from "../../../utils/loadPrompt";
 
-const promptTemplate = loadPromptTemplate("tools/search/search-plan/prompt.xml");
+const promptTemplate = loadPromptTemplate("tools/search/search-plan/prompt.xml", `
+<prompt>
+  <task>
+    Create a search plan to find comprehensive information about:
+    
+    {{query}}
+  </task>
+  
+  <guidelines>
+    <guideline>Break down the query into its key components</guideline>
+    <guideline>Identify primary and secondary topics to research</guideline>
+    <guideline>Plan a sequence of searches that builds understanding</guideline>
+    <guideline>Consider multiple perspectives and angles</guideline>
+    <guideline>Include specialized sources that might have unique information</guideline>
+  </guidelines>
+  
+  <output_format>
+    1. First provide a structured outline of search topics
+    2. For each topic, provide 2-3 specific search queries
+    3. Explain the purpose of each search area
+  </output_format>
+</prompt>
+`);
 
 /**
  * Generates a plan for search terms based on context

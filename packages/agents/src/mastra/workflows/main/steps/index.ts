@@ -1,9 +1,9 @@
 export { analyzeInputStep } from './analyzeInputStep';
 export { initialCrawlStep } from '../../steps/initialCrawlStep';
-export { webSearchStep } from '../../steps/webSearchStep';
-export { summarizePageStep } from '../../steps/summarizePageStep';
 export { extractLinksStep } from '../../steps/extractLinksStep';
 export { determineRelevantLinksStep } from './determineRelevantLinksStep';
 export { crawlRelatedLinksStep } from './crawlRelatedLinksStep';
 export { createComprehensiveSummaryStep } from './createComprehensiveSummaryStep';
-export { generateFinalResponseStep } from './generateFinalResponseStep'; 
+export { generateFinalResponseStep } from './generateFinalResponseStep';
+export { summarizeIndividualPagesStep } from './summarizeIndividualPagesStep';
+export { groupRelatedSummariesStep } from './groupRelatedSummariesStep'; 

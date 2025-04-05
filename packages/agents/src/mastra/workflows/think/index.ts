@@ -11,6 +11,7 @@ export const thinkWorkflow = new Workflow({
   triggerSchema: z.object({
     prompt: z.string().describe("The user's query or prompt"),
     threadId: z.string().optional().describe("Thread ID for conversation context"),
+    resourceId: z.string().optional(),
     feedbackEnabled: z.boolean().optional().default(true).describe("Whether to enable human feedback"),
   }),
 });

@@ -1,4 +1,4 @@
-import { readFileSync } from 'fs';
+import { readFileSync, existsSync } from 'fs';
 import path from 'path';
 
 /**
@@ -9,7 +9,35 @@ import path from 'path';
  */
 export function loadPromptTemplate(relativePath: string, fallback: string = ''): string {
   try {
-    const xmlPath = path.join(process.cwd(), 'packages/agents/src/mastra', relativePath);
+    // Try multiple possible locations for the XML file
+    // 1. First check direct path from repo root
+    let xmlPath = path.join(process.cwd(), 'packages/agents/src/mastra', relativePath);
+    
+    // 2. If not found, try relative to app directory (for Next.js app)
+    if (!existsSync(xmlPath)) {
+      xmlPath = path.join(process.cwd(), '../../packages/agents/src/mastra', relativePath);
+    }
+    
+    // 3. Try from current directory (for direct invocation)
+    if (!existsSync(xmlPath)) {
+      xmlPath = path.join(__dirname, '..', relativePath);
+    }
+    
+    // 4. Go up a level if needed (for deeply nested imports)
+    if (!existsSync(xmlPath)) {
+      xmlPath = path.join(__dirname, '../..', relativePath);
+    }
+    
+    // If we still can't find it, log detailed info to help debug
+    if (!existsSync(xmlPath)) {
+      console.error(`[loadPrompt] XML file not found at any location: ${relativePath}`);
+      console.error(`[loadPrompt] - Tried: ${process.cwd()}/packages/agents/src/mastra/${relativePath}`);
+      console.error(`[loadPrompt] - Tried: ${process.cwd()}/../../packages/agents/src/mastra/${relativePath}`);
+      console.error(`[loadPrompt] - Tried: ${__dirname}/../${relativePath}`);
+      console.error(`[loadPrompt] - Tried: ${__dirname}/../../${relativePath}`);
+      return fallback;
+    }
+    
     const template = readFileSync(xmlPath, 'utf-8');
     console.log(`Loaded template from: ${xmlPath} (${template.length} chars)`);
     return template;

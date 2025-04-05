@@ -1,24 +1,22 @@
-import { Memory } from "@mastra/memory";
-import { UpstashStore } from "@mastra/upstash";
+// Add Node.js process type declaration
+declare const process: {
+  env: Record<string, string | undefined>;
+};
 
-// Common memory configuration for all agents
-export const memory = new Memory({
-  storage: new UpstashStore({
-    url: process.env.KV_REST_API_URL || '',
-    token: process.env.KV_REST_API_TOKEN || '',
-  }),
-  // Explicitly set vector to null/undefined to avoid any potential libsql dependency
-  vector: undefined, // This ensures we don't load any vector store implementation
-  // Explicitly disable embedder to avoid any potential dependency issues
-  embedder: undefined, // This prevents loading any embedding models
-  // Memory configuration options
-  options: {
-    lastMessages: 40,
-    // Disable semantic recall since it requires vector storage
-    semanticRecall: false,
-    // We're not using workingMemory yet, but it's available when needed
-    workingMemory: {
-      enabled: false,
-    },
-  },
-}); 
+// Prevent LibSQL native module loading with type-safe checks
+if (typeof process !== 'undefined' && process.env) {
+  process.env.LIBSQL_SKIP_NATIVE_LOADING = 'true';
+  process.env.LIBSQL_USE_JS_IMPLEMENTATION = 'true';
+}
+
+/**
+ * Placeholder memory implementation that avoids dependencies on LibSQL
+ * This prevents the native module loading error in the agent
+ */
+export const memory = {
+  hasItem: async () => false,
+  getItem: async () => null,
+  setItem: async () => {},
+  removeItem: async () => {},
+  clear: async () => {},
+}; 

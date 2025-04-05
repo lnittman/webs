@@ -132,249 +132,209 @@ export async function POST(request: NextRequest) {
       );
     }
     
-    // Select the agent - currently only mainAgent is fully implemented
-    // @ts-ignore - We're handling the mode selection in the prompt
-    const agent = mastra.getAgent('mainAgent');
+    // Map the mode to appropriate workflow name - simplifying the mapping
+    const workflowMap: Record<string, string> = {
+      'main': 'mainWorkflow',
+      'spin': 'spinWorkflow', 
+      'think': 'thinkWorkflow'
+    };
     
-    // Add mode prefix to prompt if it's not the default 'main' mode
-    let finalPrompt = validatedData.prompt;
+    const workflowName = workflowMap[validatedData.mode] || 'mainWorkflow';
+    
+    console.log(`[STREAM_API] Using ${workflowName} workflow for request`);
+    
+    // Get the workflow
+    const workflow = mastra.getWorkflow(workflowName as 'mainWorkflow' | 'spinWorkflow' | 'thinkWorkflow');
+    
+    if (!workflow) {
+      console.error(`[STREAM_API] Workflow ${workflowName} not found, returning error`);
+      return NextResponse.json(
+        { error: `Workflow ${workflowName} not available` },
+        { status: 500 }
+      );
+    }
     
     // Limit the prompt length to avoid context issues
+    let finalPrompt = validatedData.prompt;
     if (finalPrompt.length > 8000) {
       console.log(`[STREAM_API] Truncating long prompt from ${finalPrompt.length} to 8000 characters`);
       finalPrompt = finalPrompt.substring(0, 8000) + "... (content truncated)";
     }
     
-    if (validatedData.mode !== 'main') {
-      finalPrompt = `[${validatedData.mode.toUpperCase()} MODE] ${finalPrompt}. Use a maximum depth of ${validatedData.maxDepth} for exploration.`;
-      if (validatedData.mode === 'think' && validatedData.feedbackEnabled) {
-        finalPrompt += ' Pause for feedback when needed.';
-      }
-    }
-    
     console.log(`[STREAM_API] Processing prompt (mode: ${validatedData.mode}): ${finalPrompt.substring(0, 100)}${finalPrompt.length > 100 ? '...' : ''}`);
     
-    // Set a timeout to prevent hanging requests
+    // Set a timeout for the request
     const timeoutMs = 180000; // 3 minutes for complex operations
     
-    // Handle streaming response
-    if (validatedData.stream) {
-      // Create a text encoder for the stream
-      const encoder = new TextEncoder();
-      
-      // Create and return a streaming response
-      const stream = new ReadableStream({
-        async start(controller) {
-          try {
-            // Create abort controller for this request
-            const abortController = new AbortController();
-            
-            // Register this request as active
-            activeRequests.set(requestId, { 
-              timestamp: Date.now(),
-              controller: abortController
-            });
-            
-            console.log(`[STREAM_API] Registered new request: ${requestId}`);
-            
-            // Track if controller is closed to prevent double-closure issues
-            let isControllerClosed = false;
-            
-            // Create a set to track processed chunks and prevent duplicates
-            const processedChunks = new Set();
-            
-            // Send a message indicating the process has started
-            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
-              progress: `Starting ${validatedData.mode} mode analysis...`,
-              step: "init",
-              timestamp: Date.now(),
-              threadId: validatedData.threadId,
-              resourceId: validatedData.resourceId
-            })}\n\n`));
-            
-            // Stream the agent's response
-            const streamOptions: any = {};
-            
-            // Only pass memory options if both required fields are present
-            if (validatedData.threadId && validatedData.resourceId) {
-              streamOptions.memoryOptions = {
-                resourceId: validatedData.resourceId,
-                threadId: validatedData.threadId
-              };
+    // Only handle the streaming response path - removing non-streaming for simplicity
+    // Create a text encoder for the stream
+    const encoder = new TextEncoder();
+    
+    // Create and return a streaming response
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          // Create abort controller for this request
+          const abortController = new AbortController();
+          
+          // Register this request as active
+          activeRequests.set(requestId, { 
+            timestamp: Date.now(),
+            controller: abortController
+          });
+          
+          console.log(`[STREAM_API] Registered new request: ${requestId}`);
+          
+          // Send a message indicating the process has started
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+            progress: `Starting ${validatedData.mode} mode analysis...`,
+            step: "init",
+            timestamp: Date.now(),
+            threadId: validatedData.threadId,
+            resourceId: validatedData.resourceId,
+            requestId: requestId
+          })}\n\n`));
+          
+          // Set up timeout
+          const timeoutId = setTimeout(() => {
+            console.log(`[STREAM_API] Request timed out: ${requestId}`);
+            abortController.abort('Request timeout');
+          }, timeoutMs);
+          
+          // Clean up function for when the request is done
+          const cleanupRequest = () => {
+            clearTimeout(timeoutId);
+            if (activeRequests.has(requestId)) {
+              console.log(`[STREAM_API] Removing completed request: ${requestId}`);
+              activeRequests.delete(requestId);
             }
-            
-            // Add timeout signal
-            const timeoutId = setTimeout(() => {
-              console.log(`[STREAM_API] Request timed out: ${requestId}`);
-              abortController.abort('Request timeout');
-            }, timeoutMs);
-            
-            // Clean up function for when the request is done
-            const cleanupRequest = () => {
-              clearTimeout(timeoutId);
-              if (activeRequests.has(requestId)) {
-                console.log(`[STREAM_API] Removing completed request: ${requestId}`);
-                activeRequests.delete(requestId);
-              }
-            };
-            
-            // Listen for abort signals
-            abortController.signal.addEventListener('abort', () => {
-              console.log(`[STREAM_API] Request aborted: ${requestId}`);
-              cleanupRequest();
-            });
-            
-            const agentStream = await agent.stream(finalPrompt, streamOptions);
-            
+          };
+          
+          // Listen for abort signals
+          abortController.signal.addEventListener('abort', () => {
+            console.log(`[STREAM_API] Request aborted: ${requestId}`);
+            cleanupRequest();
+          });
+          
+          // Configure workflow watcher to report progress via SSE stream
+          workflow.watch(async ({ context, activePaths }) => {
             try {
-              // Handle the streaming text chunks
-              for await (const chunk of agentStream.textStream) {
-                // Check if controller is still open before writing
-                if (isControllerClosed) break;
+              const activeSteps = Array.from(activePaths).map(path => {
+                // Convert path to string
+                const pathStr = String(path);
                 
-                // Skip empty chunks
-                if (!chunk || chunk.trim() === '') continue;
+                // Access the steps collection safely with type assertions
+                const stepsRecord = context.steps as Record<string, { status?: string } | undefined> | undefined;
+                const status = stepsRecord && pathStr in stepsRecord ? 
+                  stepsRecord[pathStr]?.status || 'unknown' : 
+                  'unknown';
                 
-                // Create a unique identifier for this chunk (use first 20 chars)
-                const chunkId = chunk.substring(0, Math.min(20, chunk.length));
-                
-                // Only send chunks we haven't seen before
-                if (!processedChunks.has(chunkId)) {
-                  processedChunks.add(chunkId);
-                  
-                  controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
-                    chunk,
-                    timestamp: Date.now()
-                  })}\n\n`));
-                } else {
-                  console.log('[STREAM_API] Skipped duplicate chunk');
-                }
-              }
+                return `${pathStr}:${status}`;
+              }).join(', ');
               
-              // Signal the end of the stream if not already closed
-              if (!isControllerClosed) {
+              // Send step updates to client
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                progress: `Working on: ${activeSteps}`,
+                step: Array.from(activePaths)[0] ? String(Array.from(activePaths)[0]) : "processing",
+                timestamp: Date.now()
+              })}\n\n`));
+            } catch (watchError) {
+              console.error('[STREAM_API] Error in workflow watcher:', watchError);
+            }
+          });
+          
+          // Prepare the trigger data for the workflow
+          const triggerData = {
+            prompt: finalPrompt,
+            threadId: validatedData.threadId,
+            resourceId: validatedData.resourceId,
+            maxDepth: validatedData.maxDepth || 3,
+            feedbackEnabled: validatedData.feedbackEnabled
+          };
+          
+          // Create a run of the workflow
+          const { runId, start } = workflow.createRun();
+          
+          try {
+            // Execute the workflow
+            const result = await start({ triggerData });
+            
+            // Find the final response step
+            const finalResponseStep = result.results['generateFinalResponse'];
+            if (finalResponseStep?.status === 'success' && finalResponseStep.output?.response) {
+              // Stream the final response to the client
+              const responseText = finalResponseStep.output.response;
+              
+              // Simulate streaming by sending chunks
+              const chunkSize = 15;
+              for (let i = 0; i < responseText.length; i += chunkSize) {
+                const chunk = responseText.substring(i, i + chunkSize);
                 controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
-                  done: true,
-                  message: `${validatedData.mode} mode analysis complete`,
+                  chunk,
                   timestamp: Date.now()
                 })}\n\n`));
                 
-                controller.close();
-                isControllerClosed = true;
-                cleanupRequest();
+                // Add a small delay to simulate typing
+                await new Promise(resolve => setTimeout(resolve, 30));
               }
-            } catch (streamError) {
-              console.error('[STREAM_API] Streaming chunk error:', streamError);
               
-              // Send error and close if not already closed
-              if (!isControllerClosed) {
-                controller.enqueue(
-                  encoder.encode(`data: ${JSON.stringify({ 
-                    error: streamError instanceof Error ? streamError.message : 'An error occurred during streaming',
-                    timestamp: Date.now()
-                  })}\n\n`)
-                );
-                
-                controller.close();
-                isControllerClosed = true;
-                cleanupRequest();
-              }
-            }
-          } catch (error) {
-            console.error('[STREAM_API] Streaming error:', error);
-            
-            // Clean up the active request entry
-            if (activeRequests.has(requestId)) {
-              activeRequests.delete(requestId);
-            }
-            
-            try {
-              controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify({ 
-                  error: error instanceof Error ? error.message : 'An error occurred during streaming',
-                  timestamp: Date.now()
-                })}\n\n`)
-              );
+              // Signal the end of the stream
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+                done: true,
+                message: `${validatedData.mode} mode analysis complete`,
+                timestamp: Date.now()
+              })}\n\n`));
+              
               controller.close();
-            } catch (closeError) {
-              // If we can't enqueue or close, the controller is already closed
-              console.warn('[STREAM_API] Controller already closed:', closeError);
+              cleanupRequest();
+            } else {
+              // If no final response, return an error
+              throw new Error('Workflow completed but no final response was generated');
             }
+          } catch (workflowError) {
+            const errorMessage = workflowError instanceof Error ? workflowError.message : String(workflowError);
+            console.error(`[STREAM_API] Workflow error: ${errorMessage}`);
+            
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ 
+              error: `Workflow error: ${errorMessage}`,
+              timestamp: Date.now()
+            })}\n\n`));
+            
+            controller.close();
+            cleanupRequest();
+          }
+        } catch (error) {
+          console.error('[STREAM_API] Streaming error:', error);
+          
+          // Clean up the active request entry
+          if (activeRequests.has(requestId)) {
+            activeRequests.delete(requestId);
+          }
+          
+          try {
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ 
+                error: error instanceof Error ? error.message : 'An error occurred during streaming',
+                timestamp: Date.now()
+              })}\n\n`)
+            );
+            controller.close();
+          } catch (closeError) {
+            // If we can't enqueue or close, the controller is already closed
+            console.warn('[STREAM_API] Controller already closed:', closeError);
           }
         }
-      });
-      
-      // Return the stream as an SSE response
-      return new NextResponse(stream, {
-        headers: {
-          'Content-Type': 'text/event-stream',
-          'Cache-Control': 'no-cache, no-transform',
-          'Connection': 'keep-alive',
-        },
-      });
-    } else {
-      // Non-streaming fallback for backwards compatibility
-      console.log(`[STREAM_API] Using non-streaming mode for request: ${requestId}`);
-      
-      // For non-streaming requests, register the request but use a simpler cleanup
-      const abortController = new AbortController();
-      activeRequests.set(requestId, { 
-        timestamp: Date.now(),
-        controller: abortController
-      });
-      
-      const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Request timed out')), timeoutMs);
-      });
-      
-      // Prepare memory options if both thread and resource IDs are provided
-      const memoryOptions: any = {};
-      if (validatedData.threadId && validatedData.resourceId) {
-        memoryOptions.memoryOptions = {
-          resourceId: validatedData.resourceId,
-          threadId: validatedData.threadId
-        };
       }
-      
-      // Generate the response from the agent with timeout
-      const responsePromise = agent.generate(finalPrompt, memoryOptions);
-      
-      try {
-        const response = await Promise.race([responsePromise, timeoutPromise]);
-        
-        // Clean up the active request
-        if (activeRequests.has(requestId)) {
-          activeRequests.delete(requestId);
-        }
-        
-        // Check if response text is empty and provide a fallback
-        if (!response.text || response.text.trim() === '') {
-          console.warn('[STREAM_API] AI generated an empty response - returning fallback message');
-          return NextResponse.json({ 
-            response: "I apologize, but I couldn't generate a meaningful response for that content. Could you provide a shorter query or a more specific question?",
-            warning: "Content was too complex to process"
-          });
-        }
-        
-        // Return the agent's response
-        return NextResponse.json({ 
-          response: response.text,
-          threadId: validatedData.threadId,
-          resourceId: validatedData.resourceId
-        });
-      } catch (error) {
-        // Clean up the active request
-        if (activeRequests.has(requestId)) {
-          activeRequests.delete(requestId);
-        }
-        
-        console.error('[STREAM_API] Error or timeout in agent response:', error);
-        return NextResponse.json({ 
-          response: "I apologize, but I couldn't process that request in time. Please try with a shorter query or a more specific question.",
-          warning: "Request timed out"
-        }, { status: 500 });
-      }
-    }
+    });
+    
+    // Return the stream as an SSE response
+    return new NextResponse(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache, no-transform',
+        'Connection': 'keep-alive',
+      },
+    });
   } catch (error) {
     console.error('[STREAM_API] Error:', error);
     
