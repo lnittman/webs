@@ -1,3 +1,4 @@
+import React, { useEffect } from 'react';
 import { SignUp as ClerkSignUp } from '@clerk/nextjs';
 import { dark } from '@clerk/themes';
 import { useTheme } from 'next-themes';
@@ -5,6 +6,23 @@ import { useTheme } from 'next-themes';
 export const SignUp = () => {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
+
+  // Add event listener for sign-up completion
+  useEffect(() => {
+    const handleSignUpComplete = () => {
+      console.log("Sign-up completed successfully");
+      // Redirect to home page
+      window.location.href = '/';
+    };
+    
+    // Listen for the sign-up complete event
+    document.addEventListener('clerk:signup:successful', handleSignUpComplete);
+    
+    // Clean up event listener
+    return () => {
+      document.removeEventListener('clerk:signup:successful', handleSignUpComplete);
+    };
+  }, []);
   
   return (
     <div className="w-full max-w-sm mx-auto">

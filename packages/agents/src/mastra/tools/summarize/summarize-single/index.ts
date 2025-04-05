@@ -8,41 +8,7 @@ import { loadPromptTemplate, fillTemplate } from "../../../utils/loadPrompt";
 const geminiModel = google("gemini-2.0-flash");
 
 // Load the prompt template
-const promptTemplate = loadPromptTemplate(
-  "tools/prompts/summarization/summarize_single.xml",
-  // Fallback prompt if the file can't be loaded
-  `<?xml version="1.0" encoding="UTF-8"?>
-  <prompt>
-    <metadata>
-      <tool_id>summarize_single</tool_id>
-      <prompt_version>1.0</prompt_version>
-      <purpose>Create a concise summary of a single page's content.</purpose>
-    </metadata>
-    <task>
-      <objective>Provide a concise summary of the content in 2-3 sentences, capturing the main ideas and key details.</objective>
-    </task>
-    <context>
-      <content_source>{{title}}</content_source>
-      <content_url>{{url}}</content_url>
-      <content>{{content}}</content>
-    </context>
-    <instructions>
-      <step>Identify the main topic and key points from the content.</step>
-      <step>Focus on the most important information, ignoring minor details.</step>
-      <step>Synthesize into 2-3 clear, informative sentences.</step>
-    </instructions>
-    <constraints>
-      <rule>Use only 2-3 sentences in total.</rule>
-      <rule>Focus only on the most important information.</rule>
-      <avoid>Subjective opinions or evaluations.</avoid>
-      <avoid>Information not present in the original content.</avoid>
-    </constraints>
-    <output_format>
-      <description>Plain text summary within &lt;answer&gt;...&lt;/answer&gt; tags.</description>
-      <requirement>Only include the summary text within the tags, no additional commentary.</requirement>
-    </output_format>
-  </prompt>`
-);
+const promptTemplate = loadPromptTemplate("tools/summarize/summarize-single/prompt.xml");
 
 /**
  * Summarizes a single page's content
@@ -58,7 +24,7 @@ export const summarize_single = createTool({
   execute: async ({ context }) => {
     try {
       // Fill the prompt template with context
-      const filledPrompt = fillTemplate(promptTemplate, {
+      const prompt = fillTemplate(promptTemplate, {
         content: context.content,
         url: context.url || '',
         title: context.title || ''
@@ -67,7 +33,7 @@ export const summarize_single = createTool({
       // @ts-ignore - Ignore version compatibility issues with the AI SDK
       const { text } = await generateText({
         model: geminiModel,
-        prompt: filledPrompt
+        prompt: prompt 
       });
 
       let summary = text;

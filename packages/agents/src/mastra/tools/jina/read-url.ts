@@ -11,8 +11,8 @@ const inputSchema = z.object({
 /**
  * Crawls a single URL and retrieves its content using Jina Reader
  */
-export const crawl_single = createTool({
-  id: "crawl_single",
+export const read_url = createTool({
+  id: "read_url",
   description: 'Fetches markdown content for a specific URL using Jina Reader',
   inputSchema,
   execute: async ({ context }) => {
@@ -51,6 +51,7 @@ export const crawl_single = createTool({
 
       // Extract links from the content
       const links = extractLinks(content, url);
+
       console.log(`[CRAWL] ${url}: Found ${links.length} links, title: "${title.substring(0, 30)}${title.length > 30 ? '...' : ''}"`);
 
       return {
@@ -73,4 +74,4 @@ export const crawl_single = createTool({
 });
 
 // Export the tool for direct access
-export default crawl_single;
+export default read_url;

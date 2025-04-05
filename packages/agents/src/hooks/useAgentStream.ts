@@ -103,13 +103,13 @@ export function useAgentStream(baseUrl: string = '/api/agents'): StreamResult {
       
       // Reset streaming state
       setStreamBuffer('');
-      setStreamState(prev => ({
+      setStreamState({
         isStreaming: true,
         streamingContent: '',
         streamingCommand: command,
         error: null,
         isDone: false,
-      }));
+      });
       setRequestId(null);
       
       // Create new abort controller

@@ -1,4 +1,4 @@
-import { createWorkflow } from "@mastra/core/workflows";
+import { Workflow } from "@mastra/core/workflows";
 import { z } from "zod";
 import * as steps from "./steps";
 import * as commonSteps from "../steps";
@@ -6,9 +6,8 @@ import * as commonSteps from "../steps";
 /**
  * Think workflow - research with human feedback loop
  */
-export const thinkWorkflow = createWorkflow({
-  id: "think",
-  description: "Research with human feedback to refine approach",
+export const thinkWorkflow = new Workflow({
+  name: "think",
   triggerSchema: z.object({
     prompt: z.string().describe("The user's query or prompt"),
     threadId: z.string().optional().describe("Thread ID for conversation context"),
@@ -44,8 +43,8 @@ thinkWorkflow
     variables: {
       originalPrompt: { step: { id: 'analyzeThinkInput' }, path: 'originalPrompt' },
       extractedUrls: { step: { id: 'analyzeThinkInput' }, path: 'extractedUrls' },
-      feedbackEnabled: { trigger: 'feedbackEnabled' },
-      threadId: { trigger: 'threadId' },
+      feedbackEnabled: { step: { id: 'analyzeThinkInput' }, path: 'feedbackEnabled' },
+      threadId: { step: { id: 'analyzeThinkInput' }, path: 'threadId' },
     }
   })
   
@@ -56,10 +55,12 @@ thinkWorkflow
       extractedUrls: { step: { id: 'analyzeThinkInput' }, path: 'extractedUrls' },
       reasoning: { step: { id: 'reasoning' }, path: 'reasoning' },
       feedbackReceived: { step: { id: 'reasoning' }, path: 'feedbackReceived' },
-      webSearchResult: { step: { id: 'webSearch' } },
-      summarizedResults: [
-        { step: { id: 'summarizePage' } }
-      ],
-      threadId: { trigger: 'threadId' },
+      webSearchResult: { step: { id: 'webSearch' }, path: '' },
+      summarizedResults: { step: { id: 'summarizePage' }, path: '' },
+      threadId: { step: { id: 'analyzeThinkInput' }, path: 'threadId' },
     }
-  });
+  })
+  .commit();
+
+// Export the workflow
+export default thinkWorkflow;

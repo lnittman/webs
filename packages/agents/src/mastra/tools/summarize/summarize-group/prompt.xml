@@ -21,11 +21,11 @@
     <step>Identify common themes and concepts across all summaries.</step>
     <step>Note unique or complementary insights from different sources.</step>
     <step>Create a cohesive narrative that integrates the information.</step>
-    <step>Synthesize into 3-4 sentences that capture the essential information.</step>
+    <step>Synthesize into 3-5 sentences that capture the essential information.</step>
   </instructions>
 
   <constraints>
-    <rule>Use only 3-4 sentences in total.</rule>
+    <rule>Use only 3-5 sentences in total.</rule>
     <rule>Focus on integrating information rather than simply listing points.</rule>
     <avoid>Contradictory information without acknowledging the discrepancy.</avoid>
     <avoid>Information not present in the original summaries.</avoid>

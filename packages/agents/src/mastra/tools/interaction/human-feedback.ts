@@ -5,11 +5,10 @@ import { z } from "zod";
  * Collects human input during execution
  */
 export const human_feedback_tool = createTool({
-  id: "Human Feedback",
+  id: "human_feedback",
   inputSchema: z.object({
     prompt: z.string().describe("The question or prompt to ask the human"),
     options: z.array(z.string()).optional().describe("Optional list of suggested response options"),
-    timeoutSeconds: z.number().optional().default(300).describe("Seconds to wait for response before timing out"),
   }),
   description: "Pauses execution to collect human feedback",
   execute: async ({ context, suspend }) => {

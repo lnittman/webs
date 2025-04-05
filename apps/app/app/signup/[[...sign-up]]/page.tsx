@@ -1,21 +1,108 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import * as Clerk from '@clerk/elements/common';
 import * as SignUp from '@clerk/elements/sign-up';
 import { useTheme } from 'next-themes';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeSlash } from '@phosphor-icons/react';
+import { useRouter } from 'next/navigation';
 
 export default function SignUpPage() {
   const { resolvedTheme } = useTheme();
   const isDark = resolvedTheme === 'dark';
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const router = useRouter();
+  
+  // Add enhanced logging and event listeners
+  useEffect(() => {
+    // Log initial mount
+    console.log("[SignUp] Component mounted");
+    
+    const handleSignUpStart = () => {
+      console.log("[SignUp] Sign-up process started");
+    };
+    
+    const handleSignUpAttempt = () => {
+      console.log("[SignUp] Sign-up attempt made");
+    };
+    
+    const handleVerification = () => {
+      console.log("[SignUp] Verification step reached");
+    };
+    
+    const handleComplete = (event: Event) => {
+      console.log("[SignUp] Sign-up COMPLETE event fired", event);
+      
+      // Force a direct navigation after sign-up is fully completed
+      router.push('/');
+      
+      // Backup redirect using window.location
+      setTimeout(() => {
+        console.log("[SignUp] Forcing navigation to home page");
+        window.location.href = "/";
+      }, 500);
+    };
+    
+    const handleVerificationComplete = (event: Event) => {
+      console.log("[SignUp] Verification COMPLETE event fired", event);
+      
+      // Force a direct navigation after verification is completed
+      router.push('/');
+      
+      // Backup redirect using window.location
+      setTimeout(() => {
+        console.log("[SignUp] Verification complete, forcing navigation to home page");
+        window.location.href = "/";
+      }, 500);
+    };
+    
+    const handleError = (error: any) => {
+      console.error("[SignUp] Error during sign-up:", error);
+    };
+    
+    // Listen for all the relevant clerk events
+    document.addEventListener('clerk:signup:started', handleSignUpStart);
+    document.addEventListener('clerk:signup:attempted', handleSignUpAttempt);
+    document.addEventListener('clerk:signup:verification', handleVerification);
+    document.addEventListener('clerk:signup:successful', handleComplete);
+    document.addEventListener('clerk:verification:complete', handleVerificationComplete);
+    document.addEventListener('clerk:error', handleError);
+    
+    // Clean up event listeners
+    return () => {
+      console.log("[SignUp] Component unmounting, cleaning up listeners");
+      document.removeEventListener('clerk:signup:started', handleSignUpStart);
+      document.removeEventListener('clerk:signup:attempted', handleSignUpAttempt);
+      document.removeEventListener('clerk:signup:verification', handleVerification);
+      document.removeEventListener('clerk:signup:successful', handleComplete);
+      document.removeEventListener('clerk:verification:complete', handleVerificationComplete);
+      document.removeEventListener('clerk:error', handleError);
+    };
+  }, [router]);
+  
+  // Monitor route changes
+  useEffect(() => {
+    console.log("[SignUp] Current pathname:", window.location.pathname);
+    
+    // Forcibly redirect if on a continue page
+    if (window.location.pathname.includes('/continue')) {
+      console.log("[SignUp] Detected continue page, redirecting to home");
+      router.push('/');
+      
+      setTimeout(() => {
+        window.location.href = '/';
+      }, 100);
+    }
+  }, [router]);
   
   return (
     <div className={`flex flex-col items-center justify-center min-h-screen ${isDark ? 'bg-[#171717]' : 'bg-[#f9f9f9]'} ${isDark ? 'text-white' : 'text-black'}`}>
       <div className="w-full max-w-sm mx-auto p-6">
-        <SignUp.Root routing="hash">
+        <SignUp.Root 
+          routing="hash"
+          path="/"
+        >
           <SignUp.Step name="start" className="w-full">
             <div className="text-center mb-10">
               <div className="text-4xl font-bold mb-2">🕸️ webs</div>
@@ -69,7 +156,7 @@ export default function SignUpPage() {
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
                     onClick={() => setShowPassword(!showPassword)}
                   >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    {showPassword ? <EyeSlash className="h-5 w-5" weight="duotone" /> : <Eye className="h-5 w-5" weight="duotone" />}
                   </button>
                 </div>
                 <Clerk.FieldError className="text-red-400 text-xs mt-2" />
@@ -87,7 +174,7 @@ export default function SignUpPage() {
                     className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   >
-                    {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    {showConfirmPassword ? <EyeSlash className="h-5 w-5" weight="duotone" /> : <Eye className="h-5 w-5" weight="duotone" />}
                   </button>
                 </div>
                 <Clerk.FieldError className="text-red-400 text-xs mt-2" />

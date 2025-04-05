@@ -9,7 +9,6 @@ import {
 } from "@/lib/store/resultsStore";
 import { useAtom } from "jotai";
 import { activeContextAtom, addToCommandHistoryAtom, commandInputAtom } from "@/lib/store/settingsStore";
-import { useMediaQuery } from "@repo/design/hooks/use-media-query";
 import { useUser } from "@clerk/nextjs";
 import { useChatHistoryStore } from "@/lib/store/chatHistoryStore";
 import { useAgentStream, isUrl } from "@repo/agents/src/hooks";
@@ -155,10 +154,10 @@ export function Chat({ id }: ChatProps) {
         console.log(`[Chat] URL detected, set as active context: ${command}`);
       }
       
-      // Create the stream request based on input type
+      // Create the stream request based on input type - use prompt property instead of url/query
       const streamRequest = {
         mode,
-        ...(isDirectUrl ? { url: command } : { query: command })
+        prompt: command
       };
       
       console.log(`[Chat] Streaming request:`, streamRequest);

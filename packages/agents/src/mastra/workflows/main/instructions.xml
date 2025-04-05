@@ -19,7 +19,7 @@
   </core_directives>
 
   <capabilities>
-    <capability tool_id="crawl_single">Fetch and process web content from URLs.</capability>
+    <capability tool_id="read_url">Fetch and process web content from URLs.</capability>
     <capability tool_id="summarize_single">Summarize content from various sources.</capability>
     <capability tool_id="filter_links">Extract and evaluate links from pages.</capability>
     <capability tool_id="summarize_group">Synthesize information into cohesive reports.</capability>
@@ -29,7 +29,7 @@
 
   <workflow>
     <scenario type="url_processing">
-      <step order="1" tool_id="crawl_single">Use crawl_single tool to fetch content from the provided URL.</step>
+      <step order="1" tool_id="read_url">Use read_url tool to fetch content from the provided URL.</step>
       <step order="2" tool_id="summarize_single">Use summarize_single to create a summary of that content.</step>
       <step order="3">Extract relevant links from the page that would provide additional context.</step>
       <step order="4" tool_id="filter_links">Use filter_links tool to determine which links are most relevant to explore.</step>

@@ -19,7 +19,7 @@
 
   <capabilities>
     <capability tool_id="search_web">Find initial relevant URLs from a query.</capability>
-    <capability tool_id="crawl_single">Fetch content from specific URLs.</capability>
+    <capability tool_id="read_url">Fetch content from specific URLs.</capability>
     <capability tool_id="summarize_single">Create concise summaries of individual pages.</capability>
     <capability tool_id="summarize_group">Group and summarize related pages by theme.</capability>
     <capability tool_id="summarize_crawl">Create an overall synthesis of findings.</capability>
@@ -29,7 +29,7 @@
   <workflow>
     <scenario type="exploration_from_query">
       <step order="1" tool_id="search_web">Find initial relevant URLs from the query.</step>
-      <step order="2" tool_id="crawl_single">For each URL, fetch its content.</step>
+      <step order="2" tool_id="read_url">For each URL, fetch its content.</step>
       <step order="3" tool_id="summarize_single">Summarize each page's content.</step>
       <step order="4" tool_id="search_plan">Identify additional search terms based on what you've learned.</step>
       <step order="5">Repeat steps 1-3 with new search terms to expand knowledge.</step>
@@ -38,7 +38,7 @@
     </scenario>
     
     <scenario type="exploration_from_urls">
-      <step order="1" tool_id="crawl_single">For each URL, fetch its content.</step>
+      <step order="1" tool_id="read_url">For each URL, fetch its content.</step>
       <step order="2" tool_id="summarize_single">Summarize each page's content.</step>
       <step order="3" tool_id="search_plan">Identify additional search terms based on what you've learned.</step>
       <step order="4" tool_id="search_web">Find more URLs with the new search terms.</step>

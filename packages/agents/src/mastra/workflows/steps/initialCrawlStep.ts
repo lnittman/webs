@@ -33,9 +33,9 @@ export const initialCrawlStep = new Step({
     console.log(`[WORKFLOW:initialCrawl] Crawling URL: ${urlToCrawl}`);
     
     try {
-      // Check if the crawl_single tool is available
-      if (!tools.crawl_single || !tools.crawl_single.execute) {
-        console.error(`[WORKFLOW:initialCrawl] crawl_single tool not found`);
+      // Check if the read_url tool is available
+      if (!tools.read_url || !tools.read_url.execute) {
+        console.error(`[WORKFLOW:initialCrawl] read_url tool not found`);
         return { 
           error: "Crawl tool not available",
           url: urlToCrawl
@@ -43,7 +43,7 @@ export const initialCrawlStep = new Step({
       }
       
       // Crawl the URL
-      const result = await tools.crawl_single.execute({
+      const result = await tools.read_url.execute({
         context: {
           url: urlToCrawl
         }

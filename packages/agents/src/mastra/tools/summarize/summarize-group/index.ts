@@ -1,15 +1,17 @@
-import { createTool } from "@mastra/core/tools";
-import { z } from "zod";
 import { google } from "@ai-sdk/google";
+import { createTool } from "@mastra/core/tools";
 import { generateText } from "ai";
+import { z } from "zod";
+import { loadPromptTemplate, fillTemplate } from "../../../utils/loadPrompt";
 
-const geminiModel = google("gemini-2.0-flash");
+// Load the prompt template
+const promptTemplate = loadPromptTemplate("tools/summarize/summarize-group/prompt.xml");
 
 /**
  * Summarizes a group of related pages
  */
 export const summarize_group = createTool({
-  id: "Summarize Group",
+  id: "summarize_group",
   inputSchema: z.object({
     summaries: z.array(z.object({
       summary: z.string(),
@@ -28,26 +30,21 @@ export const summarize_group = createTool({
         `
       ).join("\n\n");
 
+      // Format summaries for template
+      const summariesText = combinedText;
+
+      // Fill the prompt template with context
+      const prompt = fillTemplate(promptTemplate, {
+        summariesText,
+        groupName: context.groupName || "Related pages"
+      });
+
       const { text } = await generateText({
-        model: geminiModel,
-        prompt: `Analyze the following summaries from related pages${context.groupName ? ` about "${context.groupName}"` : ''} 
-        and provide a synthesized summary of 3-4 sentences that captures the common themes and key insights.
-        
-        ${combinedText}
-        
-        <group_summary>
-        `
+        model: google("gemini-2.0-flash"),
+        prompt
       });
 
       let groupSummary = text;
-      
-      // Clean up the response
-      if (groupSummary.includes("<group_summary>")) {
-        groupSummary = groupSummary.split("<group_summary>")[1];
-      }
-      if (groupSummary.includes("</group_summary>")) {
-        groupSummary = groupSummary.split("</group_summary>")[0];
-      }
       
       return { 
         groupSummary: groupSummary.trim(),

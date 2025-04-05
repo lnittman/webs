@@ -37,13 +37,13 @@ export const crawlRelatedLinksStep = new Step({
             setTimeout(() => reject(new Error('Crawl timed out')), timeout);
           });
           
-          // Check if the crawl_single tool is available
-          if (!tools.crawl_single || typeof tools.crawl_single.execute !== 'function') {
-            throw new Error('crawl_single tool not available or not properly configured');
+          // Check if the read_url tool is available
+          if (!tools.read_url || typeof tools.read_url.execute !== 'function') {
+            throw new Error('read_url tool not available or not properly configured');
           }
           
           // Create the crawl promise
-          const crawlPromise = tools.crawl_single.execute({ context: { url: link } });
+          const crawlPromise = tools.read_url.execute({ context: { url: link } });
           
           // Race between the crawl and the timeout
           const crawlResult = await Promise.race([crawlPromise, timeoutPromise]) as any;

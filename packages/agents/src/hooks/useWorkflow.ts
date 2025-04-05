@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { useAgentStream, StreamRequest } from '../useAgentStream';
+import { useAgentStream, StreamRequest } from './useAgentStream';
 
 // Types for the workflow hook
 export type WorkflowType = 'main' | 'spin' | 'think';

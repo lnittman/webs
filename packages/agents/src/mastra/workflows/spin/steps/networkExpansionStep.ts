@@ -52,13 +52,21 @@ export const networkExpansionStep = new Step({
       
       try {
         // Crawl the URL to get content
-        if (!tools.crawl_single || !tools.crawl_single.execute) {
-          throw new Error("crawl_single tool not available");
+        if (!tools.read_url || !tools.read_url.execute) {
+          throw new Error("read_url tool not available");
+        }
+
+        const crawlResult = await tools.read_url.execute({ context: { url } });
+        
+        if (!crawlResult.content) {
+          console.log(`[WORKFLOW:spin:networkExpansion] Empty content for ${url}, skipping`);
+          continue;
         }
         
-        const crawlResult = await tools.crawl_single.execute({
-          context: { url }
-        });
+        // Summarize the content
+        if (!tools.summarize_single || !tools.summarize_single.execute) {
+          throw new Error("summarize_single tool not available");
+        }
         
         if (!crawlResult.content) {
           console.log(`[WORKFLOW:spin:networkExpansion] Empty content for ${url}, skipping`);

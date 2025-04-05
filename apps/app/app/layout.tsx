@@ -35,6 +35,11 @@ export default function RootLayout({
               card: 'bg-background border-border'
             }
           }}
+          afterSignInUrl="/"
+          afterSignUpUrl="/"
+          signInUrl="/signin"
+          signUpUrl="/signup"
+          redirectUrl="/"
         >
           <ThemeProvider>
             <TooltipProvider>
@@ -49,6 +54,29 @@ export default function RootLayout({
             </TooltipProvider>
           </ThemeProvider>
         </ClerkProvider>
+        
+        {/* Enhanced redirect handler with more comprehensive redirects */}
+        <script dangerouslySetInnerHTML={{
+          __html: `
+            // Global event listener for Clerk sign-up success
+            document.addEventListener('clerk:signup:successful', function(event) {
+              console.log("[Global] Sign-up successful, redirecting to home");
+              window.location.href = "/";
+            });
+
+            // Global event listener for Clerk verification completion
+            document.addEventListener('clerk:verification:complete', function(event) {
+              console.log("[Global] Verification complete, redirecting to home");
+              window.location.href = "/";
+            });
+
+            // Detect any continue path and forcibly redirect to home
+            if (window.location.pathname.includes('/continue')) {
+              console.log("[Global] Detected continue path, redirecting to home");
+              window.location.href = "/";
+            }
+          `
+        }} />
       </body>
     </html>
   );

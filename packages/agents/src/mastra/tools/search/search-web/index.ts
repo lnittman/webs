@@ -2,43 +2,36 @@ import { generateText } from "ai";
 import { google } from "@ai-sdk/google";
 import { createTool } from "@mastra/core/tools";
 import { z } from "zod";
+import { loadPromptTemplate, fillTemplate } from "../../../utils/loadPrompt";
 
-const geminiModel = google("gemini-2.0-flash") as any;
+// Load the prompt template
+const promptTemplate = loadPromptTemplate("tools/search/search-web/prompt.xml");
 
 /**
  * Searches the web to find relevant URLs
  */
 export const search_web = createTool({
-  id: "Search Web",
+  id: "search_web",
   inputSchema: z.object({
     query: z.string().describe("The search query to find relevant information"),
   }),
   description: "Performs web search to find related URLs",
   execute: async ({ context }) => {
     try {
+      // Fill the prompt template with context
+      const prompt = fillTemplate(promptTemplate, {
+        query: context.query
+      });
+
       // Use Gemini's capabilities to generate search results
       const { text } = await generateText({
-        model: geminiModel,
-        prompt: `Find the most relevant URLs for this query: "${context.query}". 
-        Return a JSON array of URLs only, with no explanations.`
+        model: google("gemini-2.0-flash"),
+        prompt
       });
 
       // Parse the response to extract URLs
-      let urls = [];
-      try {
-        // The model should return a JSON array, but let's handle other formats too
-        if (text.includes("[") && text.includes("]")) {
-          const jsonStr = text.substring(text.indexOf("["), text.lastIndexOf("]") + 1);
-          urls = JSON.parse(jsonStr);
-        } else {
-          // Fallback: extract URLs with regex
-          const urlRegex = /(https?:\/\/[^\s]+)/g;
-          urls = [...text.matchAll(urlRegex)].map(match => match[0]);
-        }
-      } catch (parseError) {
-        console.error("Error parsing URLs:", parseError);
-        urls = [];
-      }
+      const jsonStr = text.substring(text.indexOf("["), text.lastIndexOf("]") + 1);
+      const urls = JSON.parse(jsonStr);
 
       return { urls };
     } catch (error) {
