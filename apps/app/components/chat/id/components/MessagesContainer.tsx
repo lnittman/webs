@@ -1,45 +1,66 @@
-import React from "react";
-import { MessageItem } from "./MessageItem";
-import { CommandResult } from "@/lib/store/resultsStore";
+import React, { useEffect, useRef } from "react";
+import { Message } from "@/lib/store/chatStore";
+import { MessageItem } from "./message-item";
+import { useChat } from "@/hooks/useChat";
+import { cn } from "@/lib/utils";
 
 interface MessagesContainerProps {
-  results: CommandResult[];
-  onCommand: (command: string) => void;
-  userName?: string | null;
+  chatId: string;
 }
 
-export function MessagesContainer({ results, onCommand, userName }: MessagesContainerProps) {
-  // Utility function for downloading markdown
-  const downloadMarkdown = (markdown: string, title: string) => {
-    const element = document.createElement("a");
-    const file = new Blob([markdown], { type: 'text/markdown' });
-    element.href = URL.createObjectURL(file);
-    element.download = `${title.replace(/\s+/g, '_').toLowerCase()}.md`;
-    document.body.appendChild(element);
-    element.click();
-    document.body.removeChild(element);
-  };
+export function MessagesContainer({ chatId }: MessagesContainerProps) {
+  const { messages: uiMessages, isStreaming: isTransitioning, handleCommand } = useChat({ chatId });
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // No need to render the container if there are no results
-  if (results.length === 0) {
+  // Effect to handle scroll behavior
+  useEffect(() => {
+    if (containerRef.current && uiMessages.length > 0) {
+      // Scroll to bottom when new messages come in
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    }
+  }, [uiMessages]);
+
+  if (uiMessages.length === 0) {
     return null;
   }
 
   return (
-    <div className="w-full py-4">
-      <div className="space-y-8">
-        {results.map((result, index) => (
-          <MessageItem
-            key={index}
-            result={result}
-            onCommand={onCommand}
-            onDownload={downloadMarkdown}
-          />
+    <div 
+      ref={containerRef} 
+      className="w-full max-w-2xl mx-auto h-full overflow-y-auto px-8 pt-4 pb-2"
+      style={{
+        // Custom scrollbar styling
+        scrollbarWidth: 'thin', // Firefox
+        scrollbarColor: 'rgba(100, 116, 139, 0.2) transparent', // Firefox
+      }}
+    >
+      <div className="space-y-4">
+        {uiMessages.map((message: Message, index: number) => (
+          <div key={`${message.id}-${index}`}>
+            <MessageItem
+              message={message}
+              onCommand={handleCommand}
+              onDownload={() => {}}
+              isTransitioning={isTransitioning && index === uiMessages.length - 1}
+            />
+          </div>
         ))}
       </div>
-      
-      {/* Add a bit of padding at the bottom to ensure content doesn't get cut off */}
-      <div className="h-12" />
+
+      {/* Custom scrollbar styling for WebKit browsers (Chrome, Safari, Edge) */}
+      <style jsx>{`
+        div::-webkit-scrollbar {
+          width: 8px;
+        }
+        div::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        div::-webkit-scrollbar-thumb {
+          background-color: rgba(100, 116, 139, 0.2);
+          border-radius: 20px;
+          border: 3px solid transparent;
+        }
+      `}</style>
     </div>
   );
 }

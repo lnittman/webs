@@ -1,51 +1,38 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { NewChat } from "@/components/chat/new";
-import { Chat } from "@/components/chat/id";
-import { useChatHistoryStore } from "@/lib/store/chatHistoryStore";
+import { useChatNavigation } from "@/lib/store/chatStore";
 import { useAuth } from "@clerk/nextjs";
 
 export default function Home() {
   const router = useRouter();
-  const { isSignedIn, isLoaded } = useAuth();
-  const { currentChatId, hasCreatedFirstChat, resetChatCreationFlag, setCurrentChat } = useChatHistoryStore();
+  const { isLoaded } = useAuth();
+  const { createAndNavigate } = useChatNavigation();
   
-  useEffect(() => {
-    setCurrentChat(null);
-  }, [setCurrentChat]);
-  
-  // Reset the chat creation flag when unmounting (navigating away)
-  useEffect(() => {
-    return () => {
-      resetChatCreationFlag();
-    };
-  }, [resetChatCreationFlag]);
-  
-  // If user is signed in and has created a chat, redirect to the chat page
-  useEffect(() => {
-    if (isLoaded && isSignedIn && hasCreatedFirstChat && currentChatId) {
-      router.push(`/c/${currentChatId}`);
+  // Handle command from the NewChat component
+  const handleCommand = useCallback(async (command: string) => {
+    if (!command.trim()) return;
+    
+    // Create a new chat with the command as the first message
+    // This will create the chat in the database and navigate to it
+    console.log('[Home] Creating new chat with initial message:', command.substring(0, 30));
+    
+    // Use createAndNavigate to ensure server persistence
+    const chatTitle = command.substring(0, 30) + (command.length > 30 ? '...' : '');
+    try {
+      await createAndNavigate(chatTitle, command);
+    } catch (error) {
+      console.error('[Home] Error creating chat:', error);
     }
-  }, [isLoaded, isSignedIn, hasCreatedFirstChat, currentChatId, router]);
+  }, [createAndNavigate]);
   
   // Handle the case where we're still loading auth state
   if (!isLoaded) {
     return null; // or a loading spinner
   }
   
-  // For signed-out users:
-  // - If they have submitted a prompt, show Chat with the current chat ID
-  // - Otherwise, show NewChat
-  if (!isSignedIn) {
-    return hasCreatedFirstChat && currentChatId ? (
-      <Chat id={currentChatId} />
-    ) : (
-      <NewChat />
-    );
-  }
-  
-  // For signed-in users, just show NewChat (they'll be redirected if they submit)
-  return <NewChat />;
+  // Show the unified Chat component without an ID to indicate it's a new chat
+  return <NewChat onCommand={handleCommand} />;
 }

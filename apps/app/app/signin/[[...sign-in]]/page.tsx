@@ -1,73 +1,49 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import * as Clerk from '@clerk/elements/common';
 import * as SignIn from '@clerk/elements/sign-in';
-import { useTheme } from 'next-themes';
-import { useRouter } from "next/navigation";
-import { useAuth, useClerk } from "@clerk/nextjs";
+import { Eye, EyeSlash } from '@phosphor-icons/react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useAuth } from "@clerk/nextjs";
 
 export default function SignInPage() {
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === 'dark';
+  const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams.get('redirect_url') || '/';
   const { isSignedIn, isLoaded } = useAuth();
-  const clerk = useClerk();
-  const [debugInfo, setDebugInfo] = useState('');
-  const [error, setError] = useState('');
   
-  // Effect for debugging
-  useEffect(() => {
-    if (isLoaded) {
-      setDebugInfo(`Auth loaded: ${isLoaded}, Signed in: ${isSignedIn}, Time: ${new Date().toISOString()}`);
-      console.log("Auth state:", { isLoaded, isSignedIn, time: new Date().toISOString() });
-    }
-  }, [isLoaded, isSignedIn]);
-  
-  // Effect to handle redirection after successful sign-in
+  // Handle redirection after successful sign-in
   useEffect(() => {
     if (isLoaded && isSignedIn) {
-      console.log("User is signed in, redirecting to home page");
       try {
-        // Allow browser to finish any pending processes
-        setTimeout(() => {
-          router.push('/');
-          console.log("Redirect initiated to /");
-        }, 1500);
-      } catch (err: any) {
+        console.log("Redirecting to:", redirectUrl);
+        window.location.href = redirectUrl;
+      } catch (err) {
         console.error("Error during redirection:", err);
-        setError(`Redirect error: ${err?.message || 'Unknown error'}`);
+        // Fallback to home page
+        window.location.href = '/';
       }
     }
-  }, [isLoaded, isSignedIn, router]);
-
-  // Handle manual navigation
-  const goToHome = () => {
-    try {
-      console.log("Manual navigation to home page");
-      window.location.href = '/';
-    } catch (err: any) {
-      console.error("Error during manual navigation:", err);
-      setError(`Manual navigation error: ${err?.message || 'Unknown error'}`);
-    }
-  };
+  }, [isLoaded, isSignedIn, redirectUrl]);
   
   return (
-    <div className={`flex flex-col items-center justify-center min-h-screen ${isDark ? 'bg-[#171717]' : 'bg-[#f9f9f9]'} ${isDark ? 'text-white' : 'text-black'}`}>
-      <div className="w-full max-w-sm mx-auto p-6">
-        <SignIn.Root
+    <div className="flex flex-col items-center justify-center w-full max-w-sm">
+      <div className="w-full p-6">
+        <SignIn.Root 
           routing="path"
           path="/signin"
         >
           <SignIn.Step name="start" className="w-full">
             <div className="text-center mb-10">
-              <div className="text-4xl font-bold mb-2">🕸️ webs</div>
+              <div className="text-4xl font-bold mb-2 text-foreground">🕸️ webs</div>
             </div>
             
             <div className="grid grid-cols-1 gap-3 w-full mb-6">
               <Clerk.Connection 
                 name="apple" 
-                className={`flex items-center justify-center gap-2 w-full p-3 ${isDark ? 'bg-[#2b2b2b] hover:bg-[#3a3a3a]' : 'bg-[#f1f1f1] hover:bg-[#e5e5e5]'} rounded-md text-sm font-medium transition-colors`}
+                className="flex items-center justify-center gap-2 w-full p-3 bg-card hover:bg-card/80 rounded-md text-sm font-medium transition-colors text-foreground"
               >
                 <Clerk.Icon className="h-5 w-5" />
                 sign in with Apple
@@ -75,7 +51,7 @@ export default function SignInPage() {
               
               <Clerk.Connection 
                 name="google" 
-                className={`flex items-center justify-center gap-2 w-full p-3 ${isDark ? 'bg-[#2b2b2b] hover:bg-[#3a3a3a]' : 'bg-[#f1f1f1] hover:bg-[#e5e5e5]'} rounded-md text-sm font-medium transition-colors`}
+                className="flex items-center justify-center gap-2 w-full p-3 bg-card hover:bg-card/80 rounded-md text-sm font-medium transition-colors text-foreground"
               >
                 <Clerk.Icon className="h-5 w-5" />
                 sign in with Google
@@ -84,228 +60,87 @@ export default function SignInPage() {
             
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
-                <span className={`w-full border-t ${isDark ? 'border-[#333]' : 'border-[#e0e0e0]'}`} />
+                <span className="w-full border-t border-border" />
               </div>
               <div className="relative flex justify-center text-xs">
-                <span className={`${isDark ? 'bg-[#171717]' : 'bg-[#f9f9f9]'} px-4 ${isDark ? 'text-[#888]' : 'text-[#777]'}`}>or</span>
+                <span className="bg-background px-4 text-foreground/70">or</span>
               </div>
             </div>
             
             <div className="mb-5">
-              <Clerk.Field name="identifier" className="mb-1">
-                <Clerk.Label className="block text-sm font-medium mb-2">email</Clerk.Label>
+              <Clerk.Field name="identifier" className="mb-5">
+                <Clerk.Label className="block text-sm font-medium mb-2 text-foreground">email</Clerk.Label>
                 <Clerk.Input 
-                  className={`w-full p-3 ${isDark ? 'bg-[#2b2b2b] border-[#333]' : 'bg-white border-[#ddd]'} border rounded-md text-sm ${isDark ? 'text-white' : 'text-black'} focus:outline-none focus:ring-1 ${isDark ? 'focus:ring-[#666]' : 'focus:ring-[#999]'}`} 
+                  className="w-full p-3 bg-card border-border border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-ring text-foreground" 
                 />
-                <Clerk.FieldError className="text-red-400 text-xs mt-2" />
+                <Clerk.FieldError className="text-destructive text-xs mt-2" />
               </Clerk.Field>
               
-              <Clerk.Field name="password" className="mt-4">
-                <div className="flex justify-between items-center mb-2">
-                  <Clerk.Label className="block text-sm font-medium">password</Clerk.Label>
-                  <SignIn.Action 
-                    navigate="forgot-password"
-                    className={`text-sm ${isDark ? 'text-[#888] hover:text-white' : 'text-[#777] hover:text-black'}`}
-                  >
-                    forgot password?
-                  </SignIn.Action>
-                </div>
-                <Clerk.Input 
-                  type="password"
-                  className={`w-full p-3 ${isDark ? 'bg-[#2b2b2b] border-[#333]' : 'bg-white border-[#ddd]'} border rounded-md text-sm ${isDark ? 'text-white' : 'text-black'} focus:outline-none focus:ring-1 ${isDark ? 'focus:ring-[#666]' : 'focus:ring-[#999]'}`} 
-                />
-                <Clerk.FieldError className="text-red-400 text-xs mt-2" />
-              </Clerk.Field>
+              <SignIn.Strategy name="password">
+                <Clerk.Field name="password" className="mb-5">
+                  <Clerk.Label className="block text-sm font-medium mb-2 text-foreground">password</Clerk.Label>
+                  <div className="relative">
+                    <Clerk.Input 
+                      type={showPassword ? "text" : "password"}
+                      className="w-full p-3 bg-card border-border border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-ring pr-10 text-foreground" 
+                    />
+                    <button
+                      type="button"
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-foreground/70 hover:text-foreground"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeSlash className="h-5 w-5" weight="duotone" /> : <Eye className="h-5 w-5" weight="duotone" />}
+                    </button>
+                  </div>
+                  <Clerk.FieldError className="text-destructive text-xs mt-2" />
+                </Clerk.Field>
+              </SignIn.Strategy>
             </div>
             
             <SignIn.Action 
               submit
-              className={`w-full p-3 ${isDark ? 'bg-[#2b2b2b] hover:bg-[#3a3a3a]' : 'bg-[#f1f1f1] hover:bg-[#e5e5e5]'} rounded-md text-sm font-medium transition-colors`}
+              className="w-full p-3 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium transition-colors"
             >
-              submit
+              sign in
             </SignIn.Action>
             
-            <div className={`text-center mt-6 text-sm ${isDark ? 'text-[#888]' : 'text-[#777]'}`}>
+            <div className="text-center mt-6 text-sm text-foreground/70">
               don't have an account?{' '}
-              <a href="/signup" className={`${isDark ? 'text-white' : 'text-black'} hover:underline`}>
+              <a href="/signup" className="text-primary hover:text-primary/80 hover:underline">
                 sign up
               </a>
             </div>
           </SignIn.Step>
           
-          <SignIn.Step name="sso-callback">
-            <div className="text-center mb-10">
-              <div className="text-4xl font-bold mb-2">🕸️ webs</div>
-              <h2 className="text-xl font-medium">Completing sign-in...</h2>
-              <p className={`mt-2 text-sm ${isDark ? 'text-[#888]' : 'text-[#777]'}`}>
-                Please wait while we're completing your authentication
-              </p>
-              {debugInfo && (
-                <div className="mt-4 p-2 text-xs bg-gray-800 text-gray-200 rounded font-mono overflow-x-auto max-w-full">
-                  {debugInfo}
-                </div>
-              )}
-              {error && (
-                <div className="mt-2 p-2 text-xs bg-red-900 text-red-100 rounded font-mono overflow-x-auto max-w-full">
-                  {error}
-                </div>
-              )}
-            </div>
-            <SignIn.Captcha />
-            <Clerk.GlobalError className="text-red-400 text-sm mt-4 text-center" />
-            <div className="mt-4 text-center">
-              <button 
-                onClick={goToHome}
-                className={`mt-4 p-2 ${isDark ? 'bg-[#2b2b2b] hover:bg-[#3a3a3a]' : 'bg-[#f1f1f1] hover:bg-[#e5e5e5]'} rounded-md text-sm font-medium transition-colors`}
-              >
-                Go to Home Page
-              </button>
-            </div>
-          </SignIn.Step>
-          
           <SignIn.Step name="verifications">
-            <SignIn.Strategy name="password">
-              <div className="text-center mb-6">
-                <h1 className="text-xl font-bold">enter your password</h1>
-                <p className={`${isDark ? 'text-[#888]' : 'text-[#777]'} text-sm mt-2`}>
-                  please enter your password to continue
-                </p>
-              </div>
-              
-              <Clerk.Field name="password" className="mb-5">
-                <Clerk.Label className="block text-sm font-medium mb-2">password</Clerk.Label>
-                <Clerk.Input 
-                  className={`w-full p-3 ${isDark ? 'bg-[#2b2b2b] border-[#333]' : 'bg-white border-[#ddd]'} border rounded-md text-sm ${isDark ? 'text-white' : 'text-black'} focus:outline-none focus:ring-1 ${isDark ? 'focus:ring-[#666]' : 'focus:ring-[#999]'}`} 
-                />
-                <Clerk.FieldError className="text-red-400 text-xs mt-2" />
-              </Clerk.Field>
-              
-              <SignIn.Action 
-                submit
-                className={`w-full p-3 ${isDark ? 'bg-[#2b2b2b] hover:bg-[#3a3a3a]' : 'bg-[#f1f1f1] hover:bg-[#e5e5e5]'} rounded-md text-sm font-medium transition-colors`}
-              >
-                sign in
-              </SignIn.Action>
-              
-              <SignIn.Action 
-                navigate="forgot-password"
-                className={`text-center block w-full mt-4 text-sm ${isDark ? 'text-[#888] hover:text-white' : 'text-[#777] hover:text-black'}`}
-              >
-                forgot password?
-              </SignIn.Action>
-            </SignIn.Strategy>
-            
             <SignIn.Strategy name="email_code">
-              <div className="text-center mb-6">
-                <h1 className="text-xl font-bold">check your email</h1>
-                <p className={`${isDark ? 'text-[#888]' : 'text-[#777]'} text-sm mt-2`}>
-                  we sent a verification code to <span className={isDark ? 'text-white' : 'text-black'}><SignIn.SafeIdentifier /></span>
-                </p>
-              </div>
+              <h2 className="text-xl font-semibold mb-4 text-foreground">Check your email</h2>
+              <p className="mb-6 text-foreground/70">
+                We sent a code to <SignIn.SafeIdentifier />
+              </p>
               
               <Clerk.Field name="code" className="mb-5">
-                <Clerk.Label className="block text-sm font-medium mb-2">verification code</Clerk.Label>
+                <Clerk.Label className="block text-sm font-medium mb-2 text-foreground">verification code</Clerk.Label>
                 <Clerk.Input 
-                  className={`w-full p-3 ${isDark ? 'bg-[#2b2b2b] border-[#333]' : 'bg-white border-[#ddd]'} border rounded-md text-sm ${isDark ? 'text-white' : 'text-black'} focus:outline-none focus:ring-1 ${isDark ? 'focus:ring-[#666]' : 'focus:ring-[#999]'}`} 
+                  className="w-full p-3 bg-card border-border border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-ring text-foreground" 
                 />
-                <Clerk.FieldError className="text-red-400 text-xs mt-2" />
+                <Clerk.FieldError className="text-destructive text-xs mt-2" />
               </Clerk.Field>
               
               <SignIn.Action 
                 submit
-                className={`w-full p-3 ${isDark ? 'bg-[#2b2b2b] hover:bg-[#3a3a3a]' : 'bg-[#f1f1f1] hover:bg-[#e5e5e5]'} rounded-md text-sm font-medium transition-colors`}
+                className="w-full p-3 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium transition-colors mb-3"
               >
                 verify
               </SignIn.Action>
-            </SignIn.Strategy>
-            
-            <SignIn.Strategy name="reset_password_email_code">
-              <div className="text-center mb-6">
-                <h1 className="text-xl font-bold">check your email</h1>
-                <p className={`${isDark ? 'text-[#888]' : 'text-[#777]'} text-sm mt-2`}>
-                  we sent a password reset code to <span className={isDark ? 'text-white' : 'text-black'}><SignIn.SafeIdentifier /></span>
-                </p>
-              </div>
-              
-              <Clerk.Field name="code" className="mb-5">
-                <Clerk.Label className="block text-sm font-medium mb-2">reset code</Clerk.Label>
-                <Clerk.Input 
-                  className={`w-full p-3 ${isDark ? 'bg-[#2b2b2b] border-[#333]' : 'bg-white border-[#ddd]'} border rounded-md text-sm ${isDark ? 'text-white' : 'text-black'} focus:outline-none focus:ring-1 ${isDark ? 'focus:ring-[#666]' : 'focus:ring-[#999]'}`} 
-                />
-                <Clerk.FieldError className="text-red-400 text-xs mt-2" />
-              </Clerk.Field>
-              
-              <SignIn.Action 
-                submit
-                className={`w-full p-3 ${isDark ? 'bg-[#2b2b2b] hover:bg-[#3a3a3a]' : 'bg-[#f1f1f1] hover:bg-[#e5e5e5]'} rounded-md text-sm font-medium transition-colors`}
-              >
-                continue
-              </SignIn.Action>
-            </SignIn.Strategy>
-          </SignIn.Step>
-          
-          <SignIn.Step name="forgot-password">
-            <div className="text-center mb-6">
-              <h1 className="text-xl font-bold">reset your password</h1>
-              <p className={`${isDark ? 'text-[#888]' : 'text-[#777]'} text-sm mt-2`}>
-                enter your email and we'll send you a reset link
-              </p>
-            </div>
-            
-            <Clerk.Field name="identifier" className="mb-5">
-              <Clerk.Label className="block text-sm font-medium mb-2">email</Clerk.Label>
-              <Clerk.Input 
-                className={`w-full p-3 ${isDark ? 'bg-[#2b2b2b] border-[#333]' : 'bg-white border-[#ddd]'} border rounded-md text-sm ${isDark ? 'text-white' : 'text-black'} focus:outline-none focus:ring-1 ${isDark ? 'focus:ring-[#666]' : 'focus:ring-[#999]'}`} 
-              />
-              <Clerk.FieldError className="text-red-400 text-xs mt-2" />
-            </Clerk.Field>
-            
-            <div className="flex flex-col gap-3">
-              <div className={`w-full p-3 ${isDark ? 'bg-[#2b2b2b] hover:bg-[#3a3a3a]' : 'bg-[#f1f1f1] hover:bg-[#e5e5e5]'} rounded-md text-sm font-medium text-center transition-colors`}>
-                <SignIn.SupportedStrategy name="reset_password_email_code">
-                  reset password
-                </SignIn.SupportedStrategy>
-              </div>
               
               <SignIn.Action 
                 navigate="previous"
-                className={`text-center block w-full text-sm ${isDark ? 'text-[#888] hover:text-white' : 'text-[#777] hover:text-black'}`}
+                className="w-full p-3 bg-secondary text-secondary-foreground hover:bg-secondary/90 rounded-md text-sm font-medium transition-colors"
               >
-                back to sign in
+                back
               </SignIn.Action>
-            </div>
-          </SignIn.Step>
-          
-          <SignIn.Step name="reset-password">
-            <div className="text-center mb-6">
-              <h1 className="text-xl font-bold">create new password</h1>
-              <p className={`${isDark ? 'text-[#888]' : 'text-[#777]'} text-sm mt-2`}>
-                please create a new password for your account
-              </p>
-            </div>
-            
-            <Clerk.Field name="password" className="mb-4">
-              <Clerk.Label className="block text-sm font-medium mb-2">new password</Clerk.Label>
-              <Clerk.Input 
-                className={`w-full p-3 ${isDark ? 'bg-[#2b2b2b] border-[#333]' : 'bg-white border-[#ddd]'} border rounded-md text-sm ${isDark ? 'text-white' : 'text-black'} focus:outline-none focus:ring-1 ${isDark ? 'focus:ring-[#666]' : 'focus:ring-[#999]'}`} 
-              />
-              <Clerk.FieldError className="text-red-400 text-xs mt-2" />
-            </Clerk.Field>
-            
-            <Clerk.Field name="confirmPassword" className="mb-5">
-              <Clerk.Label className="block text-sm font-medium mb-2">confirm password</Clerk.Label>
-              <Clerk.Input 
-                className={`w-full p-3 ${isDark ? 'bg-[#2b2b2b] border-[#333]' : 'bg-white border-[#ddd]'} border rounded-md text-sm ${isDark ? 'text-white' : 'text-black'} focus:outline-none focus:ring-1 ${isDark ? 'focus:ring-[#666]' : 'focus:ring-[#999]'}`} 
-              />
-              <Clerk.FieldError className="text-red-400 text-xs mt-2" />
-            </Clerk.Field>
-            
-            <SignIn.Action 
-              submit
-              className={`w-full p-3 ${isDark ? 'bg-[#2b2b2b] hover:bg-[#3a3a3a]' : 'bg-[#f1f1f1] hover:bg-[#e5e5e5]'} rounded-md text-sm font-medium transition-colors`}
-            >
-              reset password
-            </SignIn.Action>
+            </SignIn.Strategy>
           </SignIn.Step>
         </SignIn.Root>
       </div>

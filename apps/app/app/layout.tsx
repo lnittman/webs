@@ -1,11 +1,12 @@
-import type { Metadata } from 'next';
-import { TooltipProvider } from '@repo/design/components/ui/tooltip';
-import { ThemeProvider } from '@repo/design/providers/theme';
+import '@repo/design/styles/globals.css';
+import { Metadata } from 'next';
 import { ClerkProvider } from '@clerk/nextjs';
 import { dark } from '@clerk/themes';
+import { ThemeProvider } from '@repo/design/providers/theme';
+import { TooltipProvider } from '@repo/design/components/ui/tooltip';
 
-import '@repo/design/styles/globals.css';
-import { Header, CommandMenu, MobileSheet } from '@/components/layout';
+import { LayoutWrapper } from '@/components/layout/LayoutWrapper';
+import { SidebarProvider } from '@/components/layout/sidebar/SidebarProvider';
 
 export const metadata: Metadata = {
   title: 'webs - internet reader module',
@@ -19,20 +20,38 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen bg-background">
+      <body className="min-h-screen bg-background" suppressHydrationWarning>
         <ClerkProvider 
           appearance={{
             baseTheme: dark,
             variables: {
               colorPrimary: 'var(--primary)',
-              colorText: 'var(--foreground)',
+              colorText: '#ffffff',
+              colorTextSecondary: '#ffffff',
               colorBackground: 'var(--background)',
               colorInputBackground: 'var(--card)',
-              colorInputText: 'var(--foreground)'
+              colorInputText: '#ffffff',
+              colorTextOnPrimaryBackground: '#000000',
             },
             elements: {
               formButtonPrimary: 'bg-primary text-primary-foreground hover:bg-primary/90',
-              card: 'bg-background border-border'
+              rootBox: 'w-full mx-auto',
+              card: 'bg-card hover:bg-card/80 border-border',
+              socialButtonsIconButton: 'bg-muted hover:bg-muted/80',
+              dividerRow: 'text-white',
+              dividerText: 'text-white',
+              formFieldInput: 'bg-card border-border',
+              footerActionLink: 'text-primary hover:text-primary/80',
+              identityPreview: 'bg-card',
+              formFieldLabel: 'text-white',
+              formButtonReset: 'text-white hover:text-white/80',
+              navbar: 'hidden',
+              socialButtonsBlockButton: 'text-white',
+              formFieldLabelRow: 'text-white',
+              headerTitle: 'text-white',
+              headerSubtitle: 'text-white',
+              profileSectionTitle: 'text-white',
+              otpCodeFieldInput: 'text-white'
             }
           }}
           afterSignInUrl="/"
@@ -43,14 +62,9 @@ export default function RootLayout({
         >
           <ThemeProvider>
             <TooltipProvider>
-              <div className="flex min-h-screen flex-col">
-                <Header />
-                <main className="flex-1">{children}</main>
-                {/* Portal components rendered at the root layout level for proper stacking context */}
-                {/* These components use Jotai atoms from settingsStore for state management */}
-                <MobileSheet />
-                <CommandMenu />
-              </div>
+              <SidebarProvider>
+                <LayoutWrapper>{children}</LayoutWrapper>
+              </SidebarProvider>
             </TooltipProvider>
           </ThemeProvider>
         </ClerkProvider>

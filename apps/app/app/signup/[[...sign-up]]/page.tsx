@@ -3,115 +3,48 @@
 import React, { useState, useEffect } from "react";
 import * as Clerk from '@clerk/elements/common';
 import * as SignUp from '@clerk/elements/sign-up';
-import { useTheme } from 'next-themes';
 import { Eye, EyeSlash } from '@phosphor-icons/react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { useAuth } from "@clerk/nextjs";
 
 export default function SignUpPage() {
-  const { resolvedTheme } = useTheme();
-  const isDark = resolvedTheme === 'dark';
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectUrl = searchParams.get('redirect_url') || '/';
+  const { isSignedIn, isLoaded } = useAuth();
   
-  // Add enhanced logging and event listeners
+  // Handle redirection after successful sign-up
   useEffect(() => {
-    // Log initial mount
-    console.log("[SignUp] Component mounted");
-    
-    const handleSignUpStart = () => {
-      console.log("[SignUp] Sign-up process started");
-    };
-    
-    const handleSignUpAttempt = () => {
-      console.log("[SignUp] Sign-up attempt made");
-    };
-    
-    const handleVerification = () => {
-      console.log("[SignUp] Verification step reached");
-    };
-    
-    const handleComplete = (event: Event) => {
-      console.log("[SignUp] Sign-up COMPLETE event fired", event);
-      
-      // Force a direct navigation after sign-up is fully completed
-      router.push('/');
-      
-      // Backup redirect using window.location
-      setTimeout(() => {
-        console.log("[SignUp] Forcing navigation to home page");
-        window.location.href = "/";
-      }, 500);
-    };
-    
-    const handleVerificationComplete = (event: Event) => {
-      console.log("[SignUp] Verification COMPLETE event fired", event);
-      
-      // Force a direct navigation after verification is completed
-      router.push('/');
-      
-      // Backup redirect using window.location
-      setTimeout(() => {
-        console.log("[SignUp] Verification complete, forcing navigation to home page");
-        window.location.href = "/";
-      }, 500);
-    };
-    
-    const handleError = (error: any) => {
-      console.error("[SignUp] Error during sign-up:", error);
-    };
-    
-    // Listen for all the relevant clerk events
-    document.addEventListener('clerk:signup:started', handleSignUpStart);
-    document.addEventListener('clerk:signup:attempted', handleSignUpAttempt);
-    document.addEventListener('clerk:signup:verification', handleVerification);
-    document.addEventListener('clerk:signup:successful', handleComplete);
-    document.addEventListener('clerk:verification:complete', handleVerificationComplete);
-    document.addEventListener('clerk:error', handleError);
-    
-    // Clean up event listeners
-    return () => {
-      console.log("[SignUp] Component unmounting, cleaning up listeners");
-      document.removeEventListener('clerk:signup:started', handleSignUpStart);
-      document.removeEventListener('clerk:signup:attempted', handleSignUpAttempt);
-      document.removeEventListener('clerk:signup:verification', handleVerification);
-      document.removeEventListener('clerk:signup:successful', handleComplete);
-      document.removeEventListener('clerk:verification:complete', handleVerificationComplete);
-      document.removeEventListener('clerk:error', handleError);
-    };
-  }, [router]);
-  
-  // Monitor route changes
-  useEffect(() => {
-    console.log("[SignUp] Current pathname:", window.location.pathname);
-    
-    // Forcibly redirect if on a continue page
-    if (window.location.pathname.includes('/continue')) {
-      console.log("[SignUp] Detected continue page, redirecting to home");
-      router.push('/');
-      
-      setTimeout(() => {
+    if (isLoaded && isSignedIn) {
+      try {
+        console.log("Redirecting to:", redirectUrl);
+        window.location.href = redirectUrl;
+      } catch (err) {
+        console.error("Error during redirection:", err);
+        // Fallback to home page
         window.location.href = '/';
-      }, 100);
+      }
     }
-  }, [router]);
+  }, [isLoaded, isSignedIn, redirectUrl]);
   
   return (
-    <div className={`flex flex-col items-center justify-center min-h-screen ${isDark ? 'bg-[#171717]' : 'bg-[#f9f9f9]'} ${isDark ? 'text-white' : 'text-black'}`}>
-      <div className="w-full max-w-sm mx-auto p-6">
+    <div className="flex flex-col items-center justify-center w-full max-w-sm">
+      <div className="w-full p-6">
         <SignUp.Root 
-          routing="hash"
-          path="/"
+          routing="path"
+          path="/signup"
         >
           <SignUp.Step name="start" className="w-full">
             <div className="text-center mb-10">
-              <div className="text-4xl font-bold mb-2">🕸️ webs</div>
+              <div className="text-4xl font-bold mb-2 text-foreground">🕸️ webs</div>
             </div>
             
             <div className="grid grid-cols-1 gap-3 w-full mb-6">
               <Clerk.Connection 
                 name="apple" 
-                className={`flex items-center justify-center gap-2 w-full p-3 ${isDark ? 'bg-[#2b2b2b] hover:bg-[#3a3a3a]' : 'bg-[#f1f1f1] hover:bg-[#e5e5e5]'} rounded-md text-sm font-medium transition-colors`}
+                className="flex items-center justify-center gap-2 w-full p-3 bg-card hover:bg-card/80 rounded-md text-sm font-medium transition-colors text-foreground"
               >
                 <Clerk.Icon className="h-5 w-5" />
                 sign in with Apple
@@ -119,7 +52,7 @@ export default function SignUpPage() {
               
               <Clerk.Connection 
                 name="google" 
-                className={`flex items-center justify-center gap-2 w-full p-3 ${isDark ? 'bg-[#2b2b2b] hover:bg-[#3a3a3a]' : 'bg-[#f1f1f1] hover:bg-[#e5e5e5]'} rounded-md text-sm font-medium transition-colors`}
+                className="flex items-center justify-center gap-2 w-full p-3 bg-card hover:bg-card/80 rounded-md text-sm font-medium transition-colors text-foreground"
               >
                 <Clerk.Icon className="h-5 w-5" />
                 sign in with Google
@@ -128,56 +61,56 @@ export default function SignUpPage() {
             
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
-                <span className={`w-full border-t ${isDark ? 'border-[#333]' : 'border-[#e0e0e0]'}`} />
+                <span className="w-full border-t border-border" />
               </div>
               <div className="relative flex justify-center text-xs">
-                <span className={`${isDark ? 'bg-[#171717]' : 'bg-[#f9f9f9]'} px-4 ${isDark ? 'text-[#888]' : 'text-[#777]'}`}>or</span>
+                <span className="bg-background px-4 text-foreground/70">or</span>
               </div>
             </div>
             
             <div className="mb-5">
               <Clerk.Field name="emailAddress" className="mb-5">
-                <Clerk.Label className="block text-sm font-medium mb-2">email</Clerk.Label>
+                <Clerk.Label className="block text-sm font-medium mb-2 text-foreground">email</Clerk.Label>
                 <Clerk.Input 
-                  className={`w-full p-3 ${isDark ? 'bg-[#2b2b2b] border-[#333]' : 'bg-white border-[#ddd]'} border rounded-md text-sm ${isDark ? 'text-white' : 'text-black'} focus:outline-none focus:ring-1 ${isDark ? 'focus:ring-[#666]' : 'focus:ring-[#999]'}`} 
+                  className="w-full p-3 bg-card border-border border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-ring text-foreground" 
                 />
-                <Clerk.FieldError className="text-red-400 text-xs mt-2" />
+                <Clerk.FieldError className="text-destructive text-xs mt-2" />
               </Clerk.Field>
               
               <Clerk.Field name="password" className="mb-5">
-                <Clerk.Label className="block text-sm font-medium mb-2">password</Clerk.Label>
+                <Clerk.Label className="block text-sm font-medium mb-2 text-foreground">password</Clerk.Label>
                 <div className="relative">
                   <Clerk.Input 
                     type={showPassword ? "text" : "password"}
-                    className={`w-full p-3 ${isDark ? 'bg-[#2b2b2b] border-[#333]' : 'bg-white border-[#ddd]'} border rounded-md text-sm ${isDark ? 'text-white' : 'text-black'} focus:outline-none focus:ring-1 ${isDark ? 'focus:ring-[#666]' : 'focus:ring-[#999]'} pr-10`} 
+                    className="w-full p-3 bg-card border-border border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-ring pr-10 text-foreground" 
                   />
                   <button
                     type="button"
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-foreground/70 hover:text-foreground"
                     onClick={() => setShowPassword(!showPassword)}
                   >
                     {showPassword ? <EyeSlash className="h-5 w-5" weight="duotone" /> : <Eye className="h-5 w-5" weight="duotone" />}
                   </button>
                 </div>
-                <Clerk.FieldError className="text-red-400 text-xs mt-2" />
+                <Clerk.FieldError className="text-destructive text-xs mt-2" />
               </Clerk.Field>
               
               <Clerk.Field name="confirmPassword" className="mb-5">
-                <Clerk.Label className="block text-sm font-medium mb-2">confirm password</Clerk.Label>
+                <Clerk.Label className="block text-sm font-medium mb-2 text-foreground">confirm password</Clerk.Label>
                 <div className="relative">
                   <Clerk.Input 
                     type={showConfirmPassword ? "text" : "password"} 
-                    className={`w-full p-3 ${isDark ? 'bg-[#2b2b2b] border-[#333]' : 'bg-white border-[#ddd]'} border rounded-md text-sm ${isDark ? 'text-white' : 'text-black'} focus:outline-none focus:ring-1 ${isDark ? 'focus:ring-[#666]' : 'focus:ring-[#999]'} pr-10`} 
+                    className="w-full p-3 bg-card border-border border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-ring pr-10 text-foreground" 
                   />
                   <button
                     type="button"
-                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400"
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-foreground/70 hover:text-foreground"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                   >
                     {showConfirmPassword ? <EyeSlash className="h-5 w-5" weight="duotone" /> : <Eye className="h-5 w-5" weight="duotone" />}
                   </button>
                 </div>
-                <Clerk.FieldError className="text-red-400 text-xs mt-2" />
+                <Clerk.FieldError className="text-destructive text-xs mt-2" />
               </Clerk.Field>
               
               <SignUp.Captcha className="mt-3" />
@@ -185,14 +118,14 @@ export default function SignUpPage() {
             
             <SignUp.Action 
               submit
-              className={`w-full p-3 ${isDark ? 'bg-[#2b2b2b] hover:bg-[#3a3a3a]' : 'bg-[#f1f1f1] hover:bg-[#e5e5e5]'} rounded-md text-sm font-medium transition-colors`}
+              className="w-full p-3 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium transition-colors"
             >
               sign up
             </SignUp.Action>
             
-            <div className={`text-center mt-6 text-sm ${isDark ? 'text-[#888]' : 'text-[#777]'}`}>
+            <div className="text-center mt-6 text-sm text-foreground/70">
               already have an account?{' '}
-              <a href="/signin" className={`${isDark ? 'text-white' : 'text-black'} hover:underline`}>
+              <a href="/signin" className="text-primary hover:text-primary/80 hover:underline">
                 sign in
               </a>
             </div>
@@ -200,66 +133,24 @@ export default function SignUpPage() {
           
           <SignUp.Step name="verifications">
             <SignUp.Strategy name="email_code">
-              <div className="text-center mb-6">
-                <div className="text-4xl font-bold mb-2">🕸️</div>
-                <h1 className="text-xl font-bold">check your email</h1>
-                <p className={`${isDark ? 'text-[#888]' : 'text-[#777]'} text-sm mt-2`}>
-                  we sent a verification code to your email
-                </p>
-              </div>
+              <h2 className="text-xl font-semibold mb-4 text-foreground">Check your email</h2>
+              <p className="mb-6 text-foreground/70">
+                We sent a verification code to your email
+              </p>
               
               <Clerk.Field name="code" className="mb-5">
-                <Clerk.Label className="block text-sm font-medium mb-2">verification code</Clerk.Label>
+                <Clerk.Label className="block text-sm font-medium mb-2 text-foreground">verification code</Clerk.Label>
                 <Clerk.Input 
-                  className={`w-full p-3 ${isDark ? 'bg-[#2b2b2b] border-[#333]' : 'bg-white border-[#ddd]'} border rounded-md text-sm ${isDark ? 'text-white' : 'text-black'} focus:outline-none focus:ring-1 ${isDark ? 'focus:ring-[#666]' : 'focus:ring-[#999]'}`} 
+                  className="w-full p-3 bg-card border-border border rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-ring text-foreground" 
                 />
-                <Clerk.FieldError className="text-red-400 text-xs mt-2" />
+                <Clerk.FieldError className="text-destructive text-xs mt-2" />
               </Clerk.Field>
               
               <SignUp.Action 
                 submit
-                className={`w-full p-3 ${isDark ? 'bg-[#2b2b2b] hover:bg-[#3a3a3a]' : 'bg-[#f1f1f1] hover:bg-[#e5e5e5]'} rounded-md text-sm font-medium transition-colors mb-3`}
+                className="w-full p-3 bg-primary text-primary-foreground hover:bg-primary/90 rounded-md text-sm font-medium transition-colors mb-3"
               >
                 verify
-              </SignUp.Action>
-              
-              <SignUp.Action
-                navigate="start"
-                className="text-center block w-full text-sm"
-              >
-                go back
-              </SignUp.Action>
-            </SignUp.Strategy>
-            
-            <SignUp.Strategy name="phone_code">
-              <div className="text-center mb-6">
-                <div className="text-4xl font-bold mb-2">🕸️</div>
-                <h1 className="text-xl font-bold">check your phone</h1>
-                <p className={`${isDark ? 'text-[#888]' : 'text-[#777]'} text-sm mt-2`}>
-                  we sent a verification code to your phone
-                </p>
-              </div>
-              
-              <Clerk.Field name="code" className="mb-5">
-                <Clerk.Label className="block text-sm font-medium mb-2">verification code</Clerk.Label>
-                <Clerk.Input 
-                  className={`w-full p-3 ${isDark ? 'bg-[#2b2b2b] border-[#333]' : 'bg-white border-[#ddd]'} border rounded-md text-sm ${isDark ? 'text-white' : 'text-black'} focus:outline-none focus:ring-1 ${isDark ? 'focus:ring-[#666]' : 'focus:ring-[#999]'}`} 
-                />
-                <Clerk.FieldError className="text-red-400 text-xs mt-2" />
-              </Clerk.Field>
-              
-              <SignUp.Action 
-                submit
-                className={`w-full p-3 ${isDark ? 'bg-[#2b2b2b] hover:bg-[#3a3a3a]' : 'bg-[#f1f1f1] hover:bg-[#e5e5e5]'} rounded-md text-sm font-medium transition-colors mb-3`}
-              >
-                verify
-              </SignUp.Action>
-              
-              <SignUp.Action
-                navigate="start"
-                className="text-center block w-full text-sm"
-              >
-                go back
               </SignUp.Action>
             </SignUp.Strategy>
           </SignUp.Step>

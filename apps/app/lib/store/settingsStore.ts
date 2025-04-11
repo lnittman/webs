@@ -48,4 +48,16 @@ export const activeContextAtom = atom<string | null>(null);
 export const mobileSheetOpenAtom = atom<boolean>(false);
 
 // Command menu open state
-export const commandMenuOpenAtom = atom<boolean>(false); 
+export const commandMenuOpenAtom = atom<boolean>(false);
+
+// Settings modal open state
+export const settingsModalOpenAtom = atom<boolean>(false);
+
+// Sidebar state
+export const sidebarOpenAtom = atom<boolean>(false); // Default to collapsed
+
+// Language menu state
+export const languageMenuAtom = atom({
+  isVisible: false,
+  isHovering: false,
+}); 

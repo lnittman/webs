@@ -5,6 +5,7 @@ import { PrismaPlugin } from '@prisma/nextjs-monorepo-workaround-plugin';
 import type { NextConfig } from 'next';
 
 const otelRegex = /@opentelemetry\/instrumentation/;
+const libsqlRegex = /(@libsql\/client|libsql)/;
 
 export const config: NextConfig = {
   images: {
@@ -35,37 +36,52 @@ export const config: NextConfig = {
     ];
   },
 
-  // Force Next.js to transpile these packages to fix version conflicts
-  // This helps with the LibSQL version conflicts
+  // Allow libsql and @libsql/client packages to be bundled with the server
+  // This prevents the version mismatch issues
   experimental: {
-    serverComponentsExternalPackages: [
-      '@libsql/client',
-      'libsql',
-      '@mastra/core',
-      '@mastra/memory',
-      '@mastra/upstash',
-    ],
-    // Add turbo config to address warnings
-    turbo: {
-      resolveAlias: {
-        // Ensure only one version of libsql is used
-        '@libsql/client': '@libsql/client@0.15.2',
-        'libsql': 'libsql@0.5.4',
-      },
-    },
+    serverComponentsExternalPackages: [],
+    serverMinification: true,
   },
 
+  // @ts-ignore - Next.js webpack config type issues
   webpack(config, { isServer }) {
     if (isServer) {
       config.plugins = config.plugins || [];
       config.plugins.push(new PrismaPlugin());
+      
+      // Handle LibSQL dependencies differently
+      if (config.externals) {
+        // Filter out libsql packages from externals
+        if (Array.isArray(config.externals)) {
+          // @ts-ignore - Type issues with externals
+          config.externals = config.externals.filter(external => {
+            if (typeof external === 'string') {
+              return !external.match(libsqlRegex);
+            }
+            return true;
+          });
+        } else if (typeof config.externals === 'function') {
+          const originalExternals = config.externals;
+          // @ts-ignore - Not going to match the exact function type
+          config.externals = (ctx, callback) => {
+            originalExternals(ctx, (err, result) => {
+              if (err) return callback(err);
+              
+              if (typeof result === 'string' && result.match(libsqlRegex)) {
+                return callback(null, undefined);
+              }
+              
+              callback(null, result);
+            });
+          };
+        }
+      }
     }
 
     config.ignoreWarnings = [
       { module: otelRegex },
-      // Ignore the version mismatch warnings for LibSQL
-      { message: /^Package @libsql\/client can't be external/ },
-      { message: /^Package libsql can't be external/ },
+      // Ignore LibSQL warnings about mismatched versions
+      { module: libsqlRegex }
     ];
 
     return config;
@@ -75,5 +91,6 @@ export const config: NextConfig = {
   skipTrailingSlashRedirect: true,
 };
 
+// @ts-ignore - Ignore type mismatch between Next.js versions
 export const withAnalyzer = (sourceConfig: NextConfig): NextConfig =>
   withBundleAnalyzer()(sourceConfig);

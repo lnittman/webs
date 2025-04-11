@@ -1,304 +1,107 @@
-import React, { useEffect, useState, useCallback, useRef } from "react";
-import { CommandBar } from "../components/CommandBar";
-import { PresetMenu } from "../id/components/preset-menu";
-import { MessagesContainer } from "./components/MessagesContainer";
-import { 
-  useResultsStore, 
-  CommandResult,
-  CommandType
-} from "@/lib/store/resultsStore";
-import { useAtom } from "jotai";
-import { activeContextAtom, addToCommandHistoryAtom, commandInputAtom } from "@/lib/store/settingsStore";
-import { useUser } from "@clerk/nextjs";
-import { useChatHistoryStore } from "@/lib/store/chatHistoryStore";
-import { useAgentStream, isUrl } from "@repo/agents/src/hooks";
-import { useSearchParams } from "next/navigation";
+import React, { useEffect, useState, useCallback } from "react";
 
-// Debounce helper function
-function debounce<T extends (...args: any[]) => any>(fn: T, delay: number): (...args: Parameters<T>) => void {
-  let timer: NodeJS.Timeout | null = null;
-  return (...args: Parameters<T>) => {
-    if (timer) clearTimeout(timer);
-    timer = setTimeout(() => {
-      fn(...args);
-      timer = null;
-    }, delay);
-  };
-}
+import { useSidebar } from "@/components/layout/sidebar/SidebarProvider";
+import { cn } from "@/lib/utils";
+
+import { useMediaQuery } from "@repo/design/hooks/use-media-query";
+
+import { MessagesContainer } from "./components/MessagesContainer";
+import { CommandBar } from "../../command-bar";
 
 interface ChatProps {
-  id?: string;
+  chatId?: string;
+  isTransitioning?: boolean;
 }
 
-export function Chat({ id }: ChatProps) {
-  // Get URL search params
-  const searchParams = useSearchParams();
+export function Chat({ chatId, isTransitioning: propTransitioning = true }: ChatProps) {
+  const chatIdValue = chatId || "";
+  const [isTransitioning, setIsTransitioning] = useState(propTransitioning);
+  const { isOpen: isSidebarOpen } = useSidebar();
+  const isDesktop = useMediaQuery("(min-width: 768px)");
+  const [windowWidth, setWindowWidth] = useState(typeof window !== 'undefined' ? window.innerWidth : 0);
+  const [contentReady, setContentReady] = useState(false);
   
-  // Use Zustand for results and loading state
-  const { 
-    results, 
-    isLoading, 
-    addResult, 
-    updatePendingResult, 
-    setIsLoading,
-    resetResults
-  } = useResultsStore();
-  
-  // Use Jotai for active context and command history
-  const [activeContext, setActiveContext] = useAtom(activeContextAtom);
-  const [_, addToCommandHistory] = useAtom(addToCommandHistoryAtom);
-  const { user } = useUser();
-  const { chats } = useChatHistoryStore();
-
-  // Use our custom streaming hook
-  const agentStream = useAgentStream();
-  
-  // Track previous chat ID to reset results on navigation
-  const [prevChatId, setPrevChatId] = useState<string | null>(null);
-  
-  // Track if we've initialized this chat already
-  const [hasInitialized, setHasInitialized] = useState(false);
-  
-  // Track if we've sent a command request to avoid duplicates
-  const [pendingCommand, setPendingCommand] = useState<string | null>(null);
-
-  // Add state for auto-scrolling
-  const [autoScroll, setAutoScroll] = useState(true);
-
-  // Ref to track the message container for auto-scrolling
-  const messagesRef = useRef<HTMLDivElement>(null);
-
-  // Cleanup on unmount
+  // Update window width on resize
   useEffect(() => {
-    return () => {
-      agentStream.resetStream();
+    if (typeof window === 'undefined') return;
+
+    const handleResize = () => {
+      setWindowWidth(window.innerWidth);
     };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
   }, []);
-
-  // Reset results when navigating to a different chat
-  useEffect(() => {
-    if (id && prevChatId !== id) {
-      // Reset results when navigating to a new chat
-      console.log(`[Chat] Resetting results for chat ID change: ${prevChatId} -> ${id}`);
-      resetResults();
-      setPrevChatId(id);
-      setHasInitialized(false); // Reset initialization flag
-      setPendingCommand(null); // Reset pending command
-    }
-  }, [id, prevChatId, resetResults]);
-
-  // Auto-scroll when content changes if autoScroll is enabled
-  useEffect(() => {
-    if (autoScroll && messagesRef.current) {
-      messagesRef.current.scrollTop = messagesRef.current.scrollHeight;
-    }
-  }, [results, agentStream.streamingContent, autoScroll]);
   
-  // Detect scroll events to disable auto-scroll when user manually scrolls up
-  const handleScroll = useCallback(() => {
-    if (!messagesRef.current) return;
-    
-    const { scrollTop, scrollHeight, clientHeight } = messagesRef.current;
-    const isAtBottom = scrollHeight - scrollTop - clientHeight < 50;
-    
-    setAutoScroll(isAtBottom);
-  }, []);
-
-  // Command handler with duplicate prevention
-  const handleCommandInternal = useCallback(async (command: string, options?: { mode?: 'main' | 'spin' | 'think' }) => {
-    if (isLoading) {
-      console.log('[Chat] Ignoring command while loading: ', command.substring(0, 30));
-      return;
-    }
-    
-    // Check if this is a duplicate of a pending command
-    if (pendingCommand === command) {
-      console.log('[Chat] Ignoring duplicate command: ', command.substring(0, 30));
-      return;
-    }
-    
-    console.log(`[Chat] Handling command: "${command.substring(0, 30)}${command.length > 30 ? '...' : ''}" with options:`, options);
-    
-    // Set this as the pending command to prevent duplicates
-    setPendingCommand(command);
-    
-    // First, reset any previous stream state
-    agentStream.resetStream();
-    
-    setIsLoading(true);
-    addToCommandHistory(command);
-    
-    // Get the mode from options
-    const mode = options?.mode || 'main';
-    
-    // Create a pending result
-    const pendingResult: CommandResult = {
-      type: mode as CommandType,
-      content: {
-        question: command,
-        response: "Processing..."
-      },
-      command,
-      timestamp: Date.now(),
-    };
-    
-    addResult(pendingResult);
-    
-    try {
-      // Determine if the input is a URL
-      const isDirectUrl = isUrl(command);
-      
-      // If it's a URL, add it to active context
-      if (isDirectUrl) {
-        setActiveContext(command);
-        console.log(`[Chat] URL detected, set as active context: ${command}`);
-      }
-      
-      // Create the stream request based on input type - use prompt property instead of url/query
-      const streamRequest = {
-        mode,
-        prompt: command
-      };
-      
-      console.log(`[Chat] Streaming request:`, streamRequest);
-      
-      // Process with our streaming hook (no branching required)
-      await agentStream.startStreaming(streamRequest, command);
-      
-      // After stream is done, preserve the content by updating the pending result
-      // Only if the stream completed successfully
-      if (agentStream.isDone) {
-        console.log(`[Chat] Stream completed successfully, updating result`);
-        updatePendingResult(pendingResult, {
-          type: mode as CommandType,
-          content: {
-            question: command,
-            response: agentStream.streamingContent,
-          },
-          command,
-          timestamp: Date.now(),
-        });
-      }
-    } catch (error) {
-      // Handle errors
-      console.error(`[Chat] Error processing command:`, error);
-      updatePendingResult(pendingResult, {
-        type: 'error' as CommandType,
-        content: error instanceof Error ? error.message : 'An error occurred',
-        command,
-        timestamp: Date.now(),
-      });
-    } finally {
-      setIsLoading(false);
-      setPendingCommand(null); // Clear the pending command
-    }
-  }, [
-    isLoading, setIsLoading, addToCommandHistory, addResult, 
-    agentStream, updatePendingResult, setActiveContext, pendingCommand
-  ]);
-
-  // Debounced version of handle command to prevent rapid duplicate submissions
-  const handleCommand = useCallback(
-    debounce((command: string, options?: { mode?: 'main' | 'spin' | 'think' }) => {
-      handleCommandInternal(command, options);
-    }, 250),
-    [handleCommandInternal]
-  );
-
-  // Carefully controlled initialization effect
+  // Set content as ready after a short delay
   useEffect(() => {
-    // Only run if we have an ID, aren't already initialized, aren't loading, and have no pending command
-    if (!id || hasInitialized || isLoading || pendingCommand) return; 
+    const timer = setTimeout(() => {
+      setContentReady(true);
+      setIsTransitioning(false);
+    }, 100);
     
-    // Process URL parameters first if they exist
-    const urlParams = searchParams?.toString();
-    console.log(`[Chat] Initializing chat with params: ${urlParams || 'none'}`);
+    return () => clearTimeout(timer);
+  }, []);
+  
+  // When chatId changes, reset states to prepare for new content
+  useEffect(() => {
+    setIsTransitioning(true);
+    setContentReady(false);
     
-    const mode = searchParams?.get('mode') as 'main' | 'spin' | 'think' || 'main';
-    const currentChat = chats.find(chat => chat.id === id);
+    const timer = setTimeout(() => {
+      setContentReady(true);
+      setIsTransitioning(false);
+    }, 100);
     
-    // If we don't have chat messages, we can't proceed
-    if (!currentChat?.messages?.length) {
-      console.log('[Chat] No messages found for chat, marking as initialized');
-      setHasInitialized(true);
-      return;
-    }
+    return () => clearTimeout(timer);
+  }, [chatId]);
+
+  // Calculate command bar position and width based on sidebar state and window width
+  const getCommandBarStyle = useCallback(() => {
+    if (!isDesktop) return {};
     
-    // Get the initial message
-    const initialMessage = currentChat.messages[0];
-    if (initialMessage.type !== 'user') {
-      console.log('[Chat] First message is not from user, marking as initialized');
-      setHasInitialized(true);
-      return;
-    }
+    // Calculate sidebar width
+    const sidebarWidth = isSidebarOpen ? 280 : 48;
+    const availableWidth = windowWidth - sidebarWidth;
+    const centerPoint = sidebarWidth + (availableWidth / 2);
     
-    // We have a valid message to process
-    const messageContent = initialMessage.content;
-    console.log(`[Chat] Initializing chat ${id} with message: ${messageContent.substring(0, 30)}...`);
+    // Calculate width - adjust as needed to match MessagesContainer
+    const maxWidth = Math.min(2.5 * availableWidth / 3, 768); // Cap at reasonable max width
     
-    // Set as initialized BEFORE processing to prevent duplicate processing
-    setHasInitialized(true);
-    
-    // Small delay to ensure state updates before processing
-    setTimeout(() => {
-      // Process the initial message with the correct mode from URL params if present
-      handleCommandInternal(messageContent, { mode });
-    }, 50);
-    
-  }, [id, chats, handleCommandInternal, isLoading, hasInitialized, searchParams, pendingCommand]);
+    return {
+      left: `${centerPoint}px`,
+      transform: 'translateX(-50%)',
+      maxWidth: `${maxWidth}px`,
+      width: `${Math.min(availableWidth * 0.9, maxWidth)}px`,
+      transition: 'left 0.3s cubic-bezier(0.32, 0.72, 0, 1), opacity 0.3s ease, width 0.3s cubic-bezier(0.32, 0.72, 0, 1), max-width 0.3s cubic-bezier(0.32, 0.72, 0, 1)'
+    };
+  }, [isDesktop, isSidebarOpen, windowWidth]);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-3.5rem)] bg-background text-foreground blur-container overflow-hidden">
-      <div className="flex flex-col h-full w-full max-w-3xl mx-auto px-4 relative">
-        {/* Messages Container - Make this scrollable */}
-        <div 
-          ref={messagesRef}
-          className="flex-grow overflow-y-auto hide-scrollbar pb-4"
-          onScroll={handleScroll}
-        >
-          {/* Show message results */}
-          <MessagesContainer 
-            results={results} 
-            onCommand={handleCommand} 
-            userName={user?.firstName ?? null} 
-          />
-          
-          {/* Streaming indicator - Only show if we have active streaming content */}
-          {agentStream.isStreaming && (
-            <div className="flex flex-col pl-1 animate-fade-in mb-8">
-              {/* Display user's command in the right-aligned bubble format */}
-              {agentStream.streamingCommand && results.length === 0 && (
-                <div className="flex justify-end mb-6">
-                  <div className="bg-muted/40 border border-border/40 rounded-2xl px-4 py-3 text-sm max-w-[80%]">
-                    <p className="text-foreground whitespace-pre-wrap">{agentStream.streamingCommand}</p>
-                  </div>
-                </div>
-              )}
-              
-              {/* Display the streaming response */}
-              <div className="space-y-2 w-full">
-                <div className="text-sm text-foreground whitespace-pre-wrap">
-                  {agentStream.streamingContent ? (
-                    <div className="animate-fade-in">
-                      {agentStream.streamingContent}
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2">
-                      <div className="h-1.5 w-1.5 rounded-full bg-foreground/60 animate-pulse" />
-                      <div className="h-1.5 w-1.5 rounded-full bg-foreground/60 animate-pulse delay-150" />
-                      <div className="h-1.5 w-1.5 rounded-full bg-foreground/60 animate-pulse delay-300" />
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
-        
-        {/* Command Bar - Fixed at bottom with subtle shadow and blur effect */}
-        <div className="sticky bottom-0 py-4 bg-background/95 backdrop-blur-sm border-t border-border/10 shadow-sm z-10">
-          <CommandBar onCommand={handleCommand} isLoading={isLoading} />
-        </div>
+    <div 
+      className={cn(
+        "flex flex-col h-full min-h-[calc(100vh)] items-center relative bg-background text-foreground transition-opacity duration-300 ease-in-out",
+        isTransitioning || !contentReady ? "opacity-0" : "opacity-100"
+      )}
+    >
+      {/* Container for messages with fixed height and scrollable */}
+      <div className="absolute inset-0 overflow-hidden">
+        <MessagesContainer chatId={chatIdValue} />
+      </div>
+
+      <div className="absolute bottom-4 w-full max-w-2xl px-4">
+        <CommandBar />
+      </div>
+
+      {/* CommandBar with fixed positioning at the bottom */}
+      <div 
+        className={cn(
+          "fixed bottom-6 z-50 transition-opacity duration-300",
+          isDesktop ? "" : "w-[92%] left-1/2 -translate-x-1/2",
+          isTransitioning ? "opacity-0" : "opacity-100"
+        )}
+        style={getCommandBarStyle()}
+      >
       </div>
     </div>
   );

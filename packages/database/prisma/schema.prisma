@@ -13,34 +13,56 @@ datasource db {
   relationMode = "prisma"
 }
 
-// User model - will be connected with Clerk auth
+// User model - minimal record that just links Clerk users to our data
 model User {
-  id              String          @id @default(cuid())
-  clerkId         String          @unique
-  email           String          @unique
-  name            String?
-  createdAt       DateTime        @default(now())
-  updatedAt       DateTime        @updatedAt
-  chats           Chat[]
-  chatMessages    ChatMessage[]
+  id                String          @id @default(uuid())
+  clerkId           String          @unique
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  chats             Chat[]
+  chatMessages      ChatMessage[]
+  projects          Project[]
+  hideSharedWarning Boolean         @default(false)
+  participations    ChatParticipant[]
+  sharedLinks       SharedLink[]    @relation("Owner")
 }
 
-// Chat model for storing conversations
-model Chat {
-  id              String          @id @default(cuid())
-  title           String
+// Project model for organizing chats
+model Project {
+  id              String          @id @default(uuid())
+  name            String
+  description     String?
   userId          String
   user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chats           Chat[]
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
-  messages        ChatMessage[]
+  imageUrl        String?         // Store URL to image in Vercel Blob storage
 
   @@index([userId])
 }
 
+// Chat model for storing conversations
+model Chat {
+  id              String          @id @default(uuid())
+  title           String
+  userId          String
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  projectId       String?
+  project         Project?        @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  messages        ChatMessage[]
+  participants    ChatParticipant[]
+  sharedLinks     SharedLink[]    
+
+  @@index([userId])
+  @@index([projectId])
+}
+
 // Chat messages within a conversation
 model ChatMessage {
-  id              String          @id @default(cuid())
+  id              String          @id @default(uuid())
   chatId          String
   chat            Chat            @relation(fields: [chatId], references: [id], onDelete: Cascade)
   userId          String
@@ -52,4 +74,50 @@ model ChatMessage {
 
   @@index([chatId])
   @@index([userId])
+}
+
+// Chat participants (for collaborative chats)
+model ChatParticipant {
+  id              String          @id @default(uuid())
+  chatId          String
+  chat            Chat            @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role            ParticipantRole @default(VIEWER)
+  joinedAt        DateTime        @default(now())
+  invitedBy       String?
+  inviteToken     String?         @unique
+  inviteEmail     String?
+  isActive        Boolean         @default(true)
+
+  @@unique([chatId, userId])
+  @@index([chatId])
+  @@index([userId])
+  @@index([inviteToken])
+}
+
+// Public sharing links for chats
+model SharedLink {
+  id                String        @id @default(uuid())
+  chatId            String
+  chat              Chat          @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  ownerId           String
+  owner             User          @relation("Owner", fields: [ownerId], references: [id], onDelete: Cascade)
+  accessToken       String        @unique
+  isActive          Boolean       @default(true)
+  messageCountAtShare Int         @default(0)
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+  expiresAt         DateTime?
+
+  @@index([chatId])
+  @@index([ownerId])
+  @@index([accessToken])
+}
+
+enum ParticipantRole {
+  OWNER
+  MODERATOR
+  PARTICIPANT
+  VIEWER
 }

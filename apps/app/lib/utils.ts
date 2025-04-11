@@ -134,3 +134,15 @@ export function truncateText(text: string, maxLength: number): string {
   if (text.length <= maxLength) return text;
   return text.slice(0, maxLength) + '...';
 }
+
+/**
+ * Check if a string is a valid URL
+ */
+export function isUrl(text: string): boolean {
+  try {
+    new URL(text);
+    return true;
+  } catch (e) {
+    return false;
+  }
+}

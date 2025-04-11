@@ -1,4 +1,4 @@
 export * from "./KeyboardShortcuts"; 
 export * from "./Logo";
 export * from "./MenuButton";
-export * from "./UserMenu";
+export * from "../../sidebar/components/UserMenu";

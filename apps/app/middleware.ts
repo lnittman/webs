@@ -1,30 +1,31 @@
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+
+// Define public routes
+const isPublicRoute = createRouteMatcher([
+  '/signin(.*)',
+  '/signup(.*)',
+  '/api/webhook(.*)',
+  '/_next(.*)',
+  '/favicon.ico',
+  '/images(.*)',
+  '/share/(.*)'
+]);
+
+export default clerkMiddleware(async (auth, req) => {
+  const url = req.nextUrl;
+  const pathName = url.pathname;
+  
+  // Protect routes that are not public
+  if (!isPublicRoute(req)) {
+    await auth.protect();
+  }
+});
 
 export const config = {
   matcher: [
-    // Match any URL with 'continue' or 'verification' in it
-    '/(.*continue.*)',
-    '/(.*verification.*)',
-    '/signup/(.*)' // Match all signup subpaths except the main signup
+    '/((?!.*\\..*|_next).*)', 
+    '/', 
+    '/(api|trpc)(.*)'
   ],
 };
-
-export function middleware(req: NextRequest) {
-  console.log('[Middleware] Request path:', req.nextUrl.pathname);
-  
-  // Allow main signup page
-  if (req.nextUrl.pathname === '/signup') {
-    return NextResponse.next();
-  }
-  
-  // Special handling for different paths
-  if (req.nextUrl.pathname.includes('/continue') || 
-      req.nextUrl.pathname.includes('/verification') ||
-      req.nextUrl.pathname.startsWith('/signup/')) {
-    console.log('[Middleware] Redirecting auth flow path to home page');
-    return NextResponse.redirect(new URL('/', req.url));
-  }
-  
-  return NextResponse.next();
-} 
