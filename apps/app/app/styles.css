@@ -1,9 +1,0 @@
-@import "tailwindcss";
-@import "@repo/design/styles/globals.css";
-
-@layer components {
-  .font-highway {
-    font-family: var(--title-font);
-    letter-spacing: 0.01em;
-  }
-}

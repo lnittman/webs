@@ -530,3 +530,10 @@ button:hover .arrow-icon {
 .red {
   display: none !important;
 }
+
+@layer components {
+  .font-highway {
+    font-family: var(--title-font);
+    letter-spacing: 0.01em;
+  }
+}
